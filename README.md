@@ -1,7 +1,7 @@
 # bayeslm
 This package implements elliptical slice sampler for Bayesian linear regression, with multiple shrinkage priors (horseshoe, Laplace and ridge). Our approach is much more efficient than regular Gibbs sampler.
 
-## Install
+## Installment
 install.packages("bayeslm")
 
 or
