@@ -2,15 +2,19 @@
 /*
 
 
-blocked elliptical slice sampler, user provide priors
+blocked elliptical slice sampler, horseshoe prior
 
 
 */
 
 // [[Rcpp::export]]
-List bayeslm(arma::mat Y, arma::mat X, arma::vec beta_hat, arma::vec beta, arma::uvec penalize, arma::vec block_vec, arma::vec rank_vec, int prior_type = 1, Rcpp::Nullable<Rcpp::Function> user_prior_function = R_NilValue, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1, bool verb = false, bool icept = false, bool standardize = true, bool singular = false){    
+List bayeslm(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type = 1, Rcpp::Nullable<Rcpp::Function> user_prior_function = R_NilValue, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, arma::vec cc = NULL){    
 
     clock_t t = clock();
+
+    arma::vec beta_hat;
+    arma::vec beta;
+    
 
     // dimensions
     int n = X.n_rows;
@@ -36,10 +40,11 @@ List bayeslm(arma::mat Y, arma::mat X, arma::vec beta_hat, arma::vec beta, arma:
             Y = Y / sdy;
         }
         X = arma::join_rows(arma::ones<mat>(n, 1), X);
-        block_vec = join_cols(ones<vec>(1), block_vec);
+        block_vec = join_cols(ones<vec>(1), block_vec); // put intercept in the first block
         p = p + 1;
         N_blocks = N_blocks + 1;
         sdx = join_rows(ones<mat>(1,1), sdx);
+        penalize = arma::join_cols(arma::zeros<uvec>(1), penalize); // add one indicator of penalization for intercept. Do not penalize intercept    
     }else{
         if(standardize == true){
             Y = scaling(Y);
@@ -52,7 +57,7 @@ List bayeslm(arma::mat Y, arma::mat X, arma::vec beta_hat, arma::vec beta, arma:
     arma::mat YY = trans(Y) * Y;
     arma::mat YX = trans(Y) * X;
     arma::mat XX = trans(X) * X;
-    penalize = find(penalize > 0);
+    arma::uvec penalize_index = find(penalize > 0);
 
     /*
     the input of penalize is (0,1,1,0,1...)
@@ -74,13 +79,13 @@ List bayeslm(arma::mat Y, arma::mat X, arma::vec beta_hat, arma::vec beta, arma:
 
 
     arma::mat Sigma_inv = XX;
-    double eta = 1.0; // 1/c in the paper, precision of the prior
+    arma::vec eta = 1.0 / cc; // 1/c in the paper, precision of the prior
     arma::mat M0;
     arma::mat Sigma;
     
     if(singular == true){
         // if matrix X is singular, use the "conjugate regression" type adjustment
-        M0 = eta * eye<mat>(p, p);
+        M0 = arma::diagmat(eta);
         Sigma = inv(XX + M0);
         beta_hat = Sigma * (trans(YX));
     }else{
@@ -146,7 +151,7 @@ List bayeslm(arma::mat Y, arma::mat X, arma::vec beta_hat, arma::vec beta, arma:
     arma::vec beta_hat_lastround = beta_hat;
 
     t = clock() - t;
-    Rcpp::Rcout << "fixed running time" << t  / CLOCKS_PER_SEC << endl;
+    Rcpp::Rcout << "fixed running time " << (double)t  / (double)CLOCKS_PER_SEC << endl;
 
     t = clock();
     while (h < nsamps)
@@ -172,7 +177,7 @@ List bayeslm(arma::mat Y, arma::mat X, arma::vec beta_hat, arma::vec beta, arma:
             nu = s * nu;
 
             // acceptance threshold
-            priorcomp = betaprior(b.rows(block_indexes(i), block_indexes(i+1)-1) , vglobal * v.rows(block_indexes(i), block_indexes(i+1)-1), prior_type, user_prior_function)- log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i+1)-1), eye<mat>(block_vec(i), block_vec(i)) / pow(s,2) / eta, singular);
+            priorcomp = log_horseshoe_approx_prior(b.rows(block_indexes(i), block_indexes(i+1)-1) , vglobal, penalize.rows(block_indexes(i), block_indexes(i+1)-1))- log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i+1)-1), arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s, 2), singular);
 
             u = arma::as_scalar(randu(1));
 
@@ -194,7 +199,7 @@ List bayeslm(arma::mat Y, arma::mat X, arma::vec beta_hat, arma::vec beta, arma:
                 b.subvec(block_indexes(i), block_indexes(i+1) - 1) = betaprop + beta_hat_block;
 
             }else{
-                while (betaprior(beta_hat_block + betaprop, vglobal * v.subvec(block_indexes(i), block_indexes(i+1)-1), prior_type, user_prior_function) - log_normal_density_matrix(beta_hat_block + betaprop, eye<mat>(block_vec(i), block_vec(i)) / pow(s,2) / eta, singular) < ly){
+                while (log_horseshoe_approx_prior(beta_hat_block + betaprop, vglobal, penalize.rows(block_indexes(i), block_indexes(i+1)-1)) - log_normal_density_matrix(beta_hat_block + betaprop, arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s,2), singular) < ly){
                     
                     loopcount += 1;
 
@@ -222,13 +227,10 @@ List bayeslm(arma::mat Y, arma::mat X, arma::vec beta_hat, arma::vec beta, arma:
         // update the global shrinkage parameter
         vgprop = exp(log(vglobal) + arma::as_scalar(randn(1)) * 0.05);
 
-        if(icept == false){
-            // if there is no intercept, pass the full vector
-            ratio = exp(betaprior(b.elem(penalize), s * vgprop * v.elem(penalize), prior_type, user_prior_function) + log_normal_density(vgprop, 0.0, 100.0)  - betaprior(b.elem(penalize), s * vglobal  * v.elem(penalize), prior_type, user_prior_function) - log_normal_density(vglobal, 0.0, 100.0)  +log(vgprop) - log(vglobal));
-        }else{
-            // else, do not consider the intercept when evaluating prior function
-            ratio = exp(betaprior(b.rows(1,p-1), s * vgprop * v.subvec(1,p-1), prior_type, user_prior_function) + log_normal_density(vgprop, 0.0, 100.0)  - betaprior(b.rows(1,p-1), s * vglobal  * v.subvec(1,p-1), prior_type, user_prior_function) - log_normal_density(vglobal, 0.0, 100.0)  +log(vgprop) - log(vglobal));
-        }    
+
+        // if there is no intercept, pass the full vector
+        ratio = exp(log_horseshoe_approx_prior(b, s * vgprop, penalize) + log_normal_density(vgprop, 0.0, 100.0)  - log_horseshoe_approx_prior(b, s * vglobal, penalize) - log_normal_density(vglobal, 0.0, 100.0)  +log(vgprop) - log(vglobal));
+
 
         if(as_scalar(randu(1)) < ratio){
             vglobal = vgprop;
@@ -258,7 +260,7 @@ List bayeslm(arma::mat Y, arma::mat X, arma::vec beta_hat, arma::vec beta, arma:
     }
 
     t = clock() - t;
-    Rcpp::Rcout << "sampling time" << t / CLOCKS_PER_SEC << endl;
+    Rcpp::Rcout << "sampling time " << (double) t / (double) CLOCKS_PER_SEC << endl;
 
     // X and Y were scaled at the beginning, rescale estimations
     for(int ll = 0; (unsigned) ll < bsamps.n_cols; ll ++){

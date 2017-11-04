@@ -16,36 +16,50 @@ double log_normal_density_matrix(arma::mat x, arma::mat Sigma_inv, bool singular
 }
 
 
-double betaprior(arma::mat beta, arma::vec v, int prior, Rcpp::Nullable<Rcpp::Function> user_prior_function){
-    
-    double output = 0;
+double log_normal_density_matrix_2(arma::mat x, arma::vec sig_diag, bool singular){
+    // log normal density function, for diagonal covariance matrix only
+    // input : sig_diag, diagonal elements of covariance matrix
+    double output = 0.0;
+    arma::mat deviation;
+    if(singular == true){
 
-    if(user_prior_function.isNotNull()){
-
-        Function user_prior_function_2(user_prior_function);
-
-        output = user_prior_function_wrapper(beta, v, user_prior_function_2);
+    }else{
+        output = 0.0;
     }
-    else{
-        switch (prior){
-            case 1:
-                output = log_horseshoe_approx_prior(beta, v);
-                break;
-            case 2:
-                output = log_double_exp_prior(beta, v);
-                break;
-            case 3:
-                output = log_normal_prior(beta, v);
-                break;
-            case 4:
-                output = log_cauchy_prior(beta, v);
-                break;
-            default:
-                Rprintf("Wrong input of prior types.\n");
-            }
-    }
-    return output;
+    return(output);
 }
+
+
+// double betaprior(arma::mat beta, arma::vec v, int prior, Rcpp::Nullable<Rcpp::Function> user_prior_function){
+    
+//     double output = 0;
+
+//     if(user_prior_function.isNotNull()){
+
+//         Function user_prior_function_2(user_prior_function);
+
+//         output = user_prior_function_wrapper(beta, v, user_prior_function_2);
+//     }
+//     else{
+//         switch (prior){
+//             case 1:
+//                 output = log_horseshoe_approx_prior(beta, v);
+//                 break;
+//             case 2:
+//                 output = log_double_exp_prior(beta, v);
+//                 break;
+//             case 3:
+//                 output = log_normal_prior(beta, v);
+//                 break;
+//             case 4:
+//                 output = log_cauchy_prior(beta, v);
+//                 break;
+//             default:
+//                 Rprintf("Wrong input of prior types.\n");
+//             }
+//     }
+//     return output;
+// }
 
 double user_prior_function_wrapper(arma::mat beta, arma::vec v, Rcpp::Function f)
 {
@@ -56,13 +70,15 @@ double user_prior_function_wrapper(arma::mat beta, arma::vec v, Rcpp::Function f
 
 
 
-double log_horseshoe_approx_prior(arma::mat beta, arma::vec v)
+double log_horseshoe_approx_prior(arma::mat beta, double v, arma::uvec penalize)
 {
-    arma::vec beta2 = conv_to<vec>::from(beta);
+    arma::uvec penalize_index = find(penalize > 0);
+    arma::vec beta2 = conv_to<vec>::from(beta.rows(penalize_index));
+    double p = (double) beta2.n_elem;
     beta2 = beta2 / v;
     arma::vec temp = log(log(1.0 + 2.0 / (pow(beta2, 2.0))));
     double ll;
-    ll = sum(temp) - sum(log(v));
+    ll = sum(temp) - log(v) * p;
     return ll;
 }
 
@@ -170,10 +186,13 @@ double log_normal_density(double x, double mu, double sigma){
 }
 
 
-double log_asymmetric_prior(arma::mat beta, double vglobal, arma::vec prob){
+double log_asymmetric_prior(arma::mat beta, double vglobal, arma::vec prob, arma::uvec penalize){
+    arma::uvec penalize_index = find(penalize > 0);
+    beta = beta.rows(penalize_index);
+    prob = prob.rows(penalize_index);
     // scale by vglobal
     beta = beta / vglobal;
-    int p = beta.n_elem;
+    double p = (double) beta.n_elem;
     arma::vec s = (1.0 - prob) / prob;
     arma::vec result = zeros<vec>(p);
     for(int i = 0; i < p; i ++){
@@ -197,9 +216,12 @@ double log_cauchy_density(double x){
 }
 
 
-double log_nonlocal_prior(arma::mat beta, double vglobal, arma::vec prior_mean){
+double log_nonlocal_prior(arma::mat beta, double vglobal, arma::uvec penalize, arma::vec prior_mean){
     // scale by vglobal
-    int p = beta.n_elem;
+    arma::uvec penalize_index = find(penalize > 0);
+    prior_mean = prior_mean.rows(penalize_index);
+    beta = beta.rows(penalize_index); // pick only penalized elements, otherwise flat (constant) prior
+    double p = (double) beta.n_elem;
     arma::vec result = zeros<vec>(p);
     for(int i = 0; i < p; i ++){
         result(i) = - log(2) + log_cauchy_density((beta(i) / 0.25 - prior_mean(i)) /vglobal) - log(2) + log_cauchy_density((beta(i) / 0.25  + prior_mean(i)) / vglobal);
@@ -214,11 +236,14 @@ double log_nonlocal_prior(arma::mat beta, double vglobal, arma::vec prior_mean){
 
 
 
-double log_ridge_prior(arma::mat beta, double lambda, double vglobal){
+double log_ridge_prior(arma::mat beta, double lambda, double vglobal, arma::uvec penalize){
     // lambda is in variance scale
     // beta ~ N(0, 1 / lambda)
+    arma::uvec penalize_index = find(penalize > 0);
+    beta = beta.rows(penalize_index); // only care about elements with penalization
+
     beta = beta / vglobal;
-    int p = beta.n_elem;
+    double p = (double) beta.n_elem;
     double output = arma::as_scalar(arma::sum(arma::pow(beta, 2)));
     output = p * log(lambda) / 2.0 - lambda / 2.0 * output;
     output = output - p * log(vglobal);
@@ -229,14 +254,21 @@ double log_ridge_prior(arma::mat beta, double lambda, double vglobal){
 
 
 
-double log_laplace_prior(arma::mat beta, double tau, double sigma, double vglobal){
-    int p = beta.n_elem;
+
+double log_laplace_prior(arma::mat beta, double tau, double sigma, double vglobal, arma::uvec penalize){
+    arma::uvec penalize_index = find(penalize > 0);
+    beta = beta.rows(penalize_index);
+    double p = (double) beta.n_elem;
     beta = beta / vglobal;
     double out = p * log(tau / 2.0 / sigma);
     out = out - tau / sigma * arma::as_scalar(arma::sum(abs(beta)));
     out = out - p * log(vglobal);
     return out;
 }
+
+
+
+
 
 
 

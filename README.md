@@ -1,14 +1,17 @@
 # bayeslm
-This package implements elliptical slice sampler for Bayesian linear regression, with multiple shrinkage priors (horseshoe, Laplace and ridge). Our approach is much more efficient than regular Gibbs sampler.
+## Description
+Efficient sampling for Gaussian linear regression with arbitrary priors. This package implements Bayesian linear regression using elliptical slice sampler, which allows easily useage of arbitrary priors.
 
-## Installment
-install.packages("bayeslm")
 
-or
+## Install
+install.packages("devtools")
 
 library(devtools)
+
 install_github("JingyuHe/bayeslm")
 
-## Reference
-Efficient sampling for Gaussian linear regression with arbitrary priors. http://jingyuhe.com/files/slice.pdf
 
+## Reference
+[Hahn, P. Richard, Jingyu He, and Hedibert Lopes. " Efficient sampling for Gaussian linear regression with arbitrary priors." (2017).](http://jingyuhe.com/files/slice.pdf)
+
+# bayeslm
