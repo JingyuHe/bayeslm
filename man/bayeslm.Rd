@@ -10,14 +10,16 @@
 \usage{
 \method{bayeslm}{default}(Y, X = FALSE, prior = "horseshoe", penalize = NULL, 
 block_vec = NULL, sigma = NULL, s2 = 1, kap2 = 1, N = 20000L, burnin = 0L, 
-thinning = 1L, vglobal = 1, verb = FALSE, icept = TRUE, 
-standardize = TRUE, singular = FALSE, prior_mean = NULL, prob_vec = NULL, cc, ...)
+thinning = 1L, vglobal = 1, verb = FALSE, icept = TRUE, standardize = TRUE, 
+singular = FALSE, scale_sigma_prior = TRUE, prior_mean = NULL, 
+prob_vec = NULL, cc = NULL, ...)
 
 \method{bayeslm}{formula}(formula, data = list(), Y = FALSE, X = FALSE, 
 prior = "horseshoe", penalize = NULL, block_vec = NULL, sigma = NULL, 
 s2 = 1, kap2 = 1, N = 20000L, burnin = 0L, thinning = 1L, vglobal = 1, 
 verb = FALSE, standardize = TRUE, singular = FALSE, 
-prior_mean = NULL, prob_vec = NULL, cc, ...)
+scale_sigma_prior = TRUE, prior_mean = NULL, 
+prob_vec = NULL, cc = NULL, ...)
 }
 
 
@@ -43,9 +45,10 @@ prior_mean = NULL, prob_vec = NULL, cc, ...)
   \item{icept}{Bool, if \code{TRUE}, add an intercept. Default value is \code{TRUE}.}
   \item{standardize}{Bool, if \code{TRUE}, standardize X and Y before sampling.}
   \item{singular}{Bool, if \code{TRUE}, take it as a rank-deficient case such as n < p or X'X is singular. See section 2.3.2 of the paper for details.}
+  \item{scale_sigma_prior}{Bool, if \code{TRUE}, the prior of regression coefficient \eqn{\beta} is scaled by residual standard error \eqn{\sigma}.}
   \item{prior_mean}{\code{vector}, specify prior mean of nonlocal prior for each regressor. It should have length \code{p} (no intercept) or \code{p + 1} (intercept). The default value is 1.5 for all regressors.}
   \item{prob_vec}{\code{vector}, specify prior mean of sharkfin prior for each regressor. It should have length \code{p} (no intercept) or \code{p + 1} (intercept). The default value is 0.25 for all regressors.}
-  \item{cc}{Only works when \code{singular == TRUE}, precision parameter of ridge adjustment.}
+  \item{cc}{Only works when \code{singular == TRUE}, precision parameter of ridge adjustment. It should be a vector with length $p$. If it is \code{NULL}, it will be set as \code{rep(10, p)}.}
   \item{...}{optional parameters to be passed to the low level function \code{bayeslm.default}.}
 }
 \details{

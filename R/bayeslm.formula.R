@@ -1,4 +1,5 @@
-bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior = "horseshoe", penalize = NULL, block_vec = NULL, sigma = NULL, s2 = 1, kap2 = 1, N = 20000L, burnin = 0L, thinning = 1L, vglobal = 1, verb = FALSE, standardize = TRUE, singular = FALSE, prior_mean = NULL, prob_vec = NULL, cc = 1, ...){
+bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior = "horseshoe", penalize = NULL, block_vec = NULL, sigma = NULL, s2 = 1, kap2 = 1, N = 20000L, burnin = 0L, thinning = 1L, vglobal = 1, verb = FALSE, standardize = TRUE, singular = FALSE, scale_sigma_prior = TRUE, prior_mean = NULL, prob_vec = NULL, cc = NULL, ...){
+
 
     if (!inherits(formula, "formula"))
         stop("method is only for formula objects")
@@ -66,6 +67,15 @@ bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior 
 
     X = as.matrix(X)
 
+
+    if(is.null(NULL)){
+        cc = rep(10, dim(X)[2])
+    }
+
+    if(icept == TRUE){
+        cc = c(10, cc)
+    }
+
     try(if(dim(Y)[1] != dim(X)[1]) stop("Length of X and Y don't agree."))
 
     # scale the initial value
@@ -88,13 +98,13 @@ bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior 
 
     if(prior == "horseshoe"){
         cat("horseshoe prior \n")
-        output = horseshoe_cpp_loop(Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+        output = horseshoe_cpp_loop(Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
     }else if(prior == "laplace"){
         cat("laplace prior \n")
-        output = blasso_cpp_loop(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+        output = blasso_cpp_loop(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
     }else if(prior == "ridge"){
         cat("ridge prior \n")
-        output = bridge_cpp_loop(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+        output = bridge_cpp_loop(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
     }else if(prior == "nonlocal"){
         cat("nonlocal prior \n")
         if(is.null(prior_mean) == TRUE){
@@ -105,7 +115,7 @@ bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior 
                 prior_mean = rep(0, dim(X)[2])
             }
         }
-        output = nonlocal_cpp_loop(Y, X, prior_mean, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+        output = nonlocal_cpp_loop(Y, X, prior_mean, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
     }else if(prior == "sharkfin"){
         cat("sharkfin prior \n")
         if(is.null(prob_vec) == TRUE){
@@ -116,7 +126,7 @@ bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior 
                 prob_vec = rep(0, dim(X)[2])
             }
         }
-        output = sharkfin_cpp_loop(Y, X, prob_vec, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+        output = sharkfin_cpp_loop(Y, X, prob_vec, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
     }else{
         cat("wrong prior \n")
     }

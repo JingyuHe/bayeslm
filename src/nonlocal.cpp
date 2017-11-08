@@ -8,7 +8,7 @@ blocked elliptical slice sampler, non-local prior
 */
 
 // [[Rcpp::export]]
-List nonlocal(arma::mat Y, arma::mat X, arma::vec prior_mean, arma::uvec penalize, arma::vec block_vec, int prior_type = 1, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, arma::vec cc = NULL){
+List nonlocal(arma::mat Y, arma::mat X, arma::vec prior_mean, arma::uvec penalize, arma::vec block_vec, int prior_type = 1, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, bool scale_sigma_prior = true, arma::vec cc = NULL){
 
     clock_t t = clock();
 
@@ -176,7 +176,7 @@ List nonlocal(arma::mat Y, arma::mat X, arma::vec prior_mean, arma::uvec penaliz
             nu = s * nu;
 
             // acceptance threshold
-            priorcomp = log_nonlocal_prior(b.rows(block_indexes(i), block_indexes(i+1)-1), vglobal, penalize.rows(block_indexes(i), block_indexes(i+1)-1), prior_mean.rows(block_indexes(i), block_indexes(i+1)-1)) - log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i+1)-1), arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s, 2), singular);
+            priorcomp = log_nonlocal_prior(b.rows(block_indexes(i), block_indexes(i+1)-1), vglobal, s, penalize.rows(block_indexes(i), block_indexes(i+1)-1), prior_mean.rows(block_indexes(i), block_indexes(i+1)-1), scale_sigma_prior) - log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i+1)-1), arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s, 2), singular);
             
             u = arma::as_scalar(randu(1));
 
@@ -199,7 +199,7 @@ List nonlocal(arma::mat Y, arma::mat X, arma::vec prior_mean, arma::uvec penaliz
                 b.subvec(block_indexes(i), block_indexes(i+1) - 1) = betaprop + beta_hat_block;
 
             }else{
-                while (log_nonlocal_prior(beta_hat_block + betaprop, vglobal, penalize.rows(block_indexes(i), block_indexes(i+1)-1), prior_mean.rows(block_indexes(i), block_indexes(i+1)-1)) - log_normal_density_matrix(beta_hat_block + betaprop, arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s,2), singular) < ly){
+                while (log_nonlocal_prior(beta_hat_block + betaprop, vglobal, s, penalize.rows(block_indexes(i), block_indexes(i+1)-1), prior_mean.rows(block_indexes(i), block_indexes(i+1)-1), scale_sigma_prior) - log_normal_density_matrix(beta_hat_block + betaprop, arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s,2), singular) < ly){
                     
                     loopcount += 1;
 
@@ -226,7 +226,7 @@ List nonlocal(arma::mat Y, arma::mat X, arma::vec prior_mean, arma::uvec penaliz
 
         vgprop = exp(log(vglobal) + arma::as_scalar(randn(1)) * 0.05);
 
-        ratio = exp(log_nonlocal_prior(b, vgprop, penalize, prior_mean) + log_normal_density(vgprop, 0.5, 100)  - log_nonlocal_prior(b, vglobal, penalize, prior_mean) - log_normal_density(vglobal, 0.5, 100) + log(vgprop) - log(vglobal));
+        ratio = exp(log_nonlocal_prior(b, vgprop, s, penalize, prior_mean, scale_sigma_prior) + log_normal_density(vgprop, 0.5, 100)  - log_nonlocal_prior(b, vglobal, s, penalize, prior_mean, scale_sigma_prior) - log_normal_density(vglobal, 0.5, 100) + log(vgprop) - log(vglobal));
 
 
         if(as_scalar(randu(1)) < ratio){

@@ -8,7 +8,7 @@ blocked elliptical slice sampler, Laplace prior
 */
 
 // [[Rcpp::export]]
-List blasso(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type = 1, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, arma::vec cc = NULL){
+List blasso(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type = 1, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, bool scale_sigma_prior = true, arma::vec cc = NULL){
 
     clock_t t = clock();
 

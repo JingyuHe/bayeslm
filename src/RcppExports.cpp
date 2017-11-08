@@ -8,8 +8,8 @@
 using namespace Rcpp;
 
 // sharkfin
-List sharkfin(arma::mat Y, arma::mat X, arma::vec prob_vec, arma::uvec penalize, arma::vec block_vec, int prior_type, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, arma::vec cc);
-RcppExport SEXP bayeslm_sharkfin(SEXP YSEXP, SEXP XSEXP, SEXP prob_vecSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP ccSEXP) {
+List sharkfin(arma::mat Y, arma::mat X, arma::vec prob_vec, arma::uvec penalize, arma::vec block_vec, int prior_type, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, bool scale_sigma_prior, arma::vec cc);
+RcppExport SEXP bayeslm_sharkfin(SEXP YSEXP, SEXP XSEXP, SEXP prob_vecSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP scale_sigma_priorSEXP, SEXP ccSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -30,14 +30,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type icept(iceptSEXP);
     Rcpp::traits::input_parameter< bool >::type standardize(standardizeSEXP);
     Rcpp::traits::input_parameter< bool >::type singular(singularSEXP);
+    Rcpp::traits::input_parameter< bool >::type scale_sigma_prior(scale_sigma_priorSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type cc(ccSEXP);
-    rcpp_result_gen = Rcpp::wrap(sharkfin(Y, X, prob_vec, penalize, block_vec, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, cc));
+    rcpp_result_gen = Rcpp::wrap(sharkfin(Y, X, prob_vec, penalize, block_vec, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc));
     return rcpp_result_gen;
 END_RCPP
 }
 // bayeslm
-List bayeslm(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type, Rcpp::Nullable<Rcpp::Function> user_prior_function, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, arma::vec cc);
-RcppExport SEXP bayeslm_bayeslm(SEXP YSEXP, SEXP XSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP user_prior_functionSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP ccSEXP) {
+List bayeslm(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type, Rcpp::Nullable<Rcpp::Function> user_prior_function, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, bool scale_sigma_prior, arma::vec cc);
+RcppExport SEXP bayeslm_bayeslm(SEXP YSEXP, SEXP XSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP user_prior_functionSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP scale_sigma_priorSEXP, SEXP ccSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -58,14 +59,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type icept(iceptSEXP);
     Rcpp::traits::input_parameter< bool >::type standardize(standardizeSEXP);
     Rcpp::traits::input_parameter< bool >::type singular(singularSEXP);
+    Rcpp::traits::input_parameter< bool >::type scale_sigma_prior(scale_sigma_priorSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type cc(ccSEXP);
-    rcpp_result_gen = Rcpp::wrap(bayeslm(Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, cc));
+    rcpp_result_gen = Rcpp::wrap(bayeslm(Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc));
     return rcpp_result_gen;
 END_RCPP
 }
 // blasso
-List blasso(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, arma::vec cc);
-RcppExport SEXP bayeslm_blasso(SEXP YSEXP, SEXP XSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP ccSEXP) {
+List blasso(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, bool scale_sigma_prior, arma::vec cc);
+RcppExport SEXP bayeslm_blasso(SEXP YSEXP, SEXP XSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP scale_sigma_priorSEXP, SEXP ccSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -85,14 +87,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type icept(iceptSEXP);
     Rcpp::traits::input_parameter< bool >::type standardize(standardizeSEXP);
     Rcpp::traits::input_parameter< bool >::type singular(singularSEXP);
+    Rcpp::traits::input_parameter< bool >::type scale_sigma_prior(scale_sigma_priorSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type cc(ccSEXP);
-    rcpp_result_gen = Rcpp::wrap(blasso(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, cc));
+    rcpp_result_gen = Rcpp::wrap(blasso(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc));
     return rcpp_result_gen;
 END_RCPP
 }
 // horseshoe
-List horseshoe(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type, Rcpp::Nullable<Rcpp::Function> user_prior_function, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, arma::vec cc);
-RcppExport SEXP bayeslm_horseshoe(SEXP YSEXP, SEXP XSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP user_prior_functionSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP ccSEXP) {
+List horseshoe(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type, Rcpp::Nullable<Rcpp::Function> user_prior_function, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, bool scale_sigma_prior, arma::vec cc);
+RcppExport SEXP bayeslm_horseshoe(SEXP YSEXP, SEXP XSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP user_prior_functionSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP scale_sigma_priorSEXP, SEXP ccSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -113,14 +116,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type icept(iceptSEXP);
     Rcpp::traits::input_parameter< bool >::type standardize(standardizeSEXP);
     Rcpp::traits::input_parameter< bool >::type singular(singularSEXP);
+    Rcpp::traits::input_parameter< bool >::type scale_sigma_prior(scale_sigma_priorSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type cc(ccSEXP);
-    rcpp_result_gen = Rcpp::wrap(horseshoe(Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, cc));
+    rcpp_result_gen = Rcpp::wrap(horseshoe(Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc));
     return rcpp_result_gen;
 END_RCPP
 }
 // nonlocal
-List nonlocal(arma::mat Y, arma::mat X, arma::vec prior_mean, arma::uvec penalize, arma::vec block_vec, int prior_type, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, arma::vec cc);
-RcppExport SEXP bayeslm_nonlocal(SEXP YSEXP, SEXP XSEXP, SEXP prior_meanSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP ccSEXP) {
+List nonlocal(arma::mat Y, arma::mat X, arma::vec prior_mean, arma::uvec penalize, arma::vec block_vec, int prior_type, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, bool scale_sigma_prior, arma::vec cc);
+RcppExport SEXP bayeslm_nonlocal(SEXP YSEXP, SEXP XSEXP, SEXP prior_meanSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP scale_sigma_priorSEXP, SEXP ccSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -141,14 +145,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type icept(iceptSEXP);
     Rcpp::traits::input_parameter< bool >::type standardize(standardizeSEXP);
     Rcpp::traits::input_parameter< bool >::type singular(singularSEXP);
+    Rcpp::traits::input_parameter< bool >::type scale_sigma_prior(scale_sigma_priorSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type cc(ccSEXP);
-    rcpp_result_gen = Rcpp::wrap(nonlocal(Y, X, prior_mean, penalize, block_vec, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, cc));
+    rcpp_result_gen = Rcpp::wrap(nonlocal(Y, X, prior_mean, penalize, block_vec, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc));
     return rcpp_result_gen;
 END_RCPP
 }
 // ridge
-List ridge(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, arma::vec cc);
-RcppExport SEXP bayeslm_ridge(SEXP YSEXP, SEXP XSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP ccSEXP) {
+List ridge(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type, double sigma, double s2, double kap2, int nsamps, int burn, int skip, double vglobal, bool verb, bool icept, bool standardize, bool singular, bool scale_sigma_prior, arma::vec cc);
+RcppExport SEXP bayeslm_ridge(SEXP YSEXP, SEXP XSEXP, SEXP penalizeSEXP, SEXP block_vecSEXP, SEXP prior_typeSEXP, SEXP sigmaSEXP, SEXP s2SEXP, SEXP kap2SEXP, SEXP nsampsSEXP, SEXP burnSEXP, SEXP skipSEXP, SEXP vglobalSEXP, SEXP verbSEXP, SEXP iceptSEXP, SEXP standardizeSEXP, SEXP singularSEXP, SEXP scale_sigma_priorSEXP, SEXP ccSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -168,52 +173,54 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type icept(iceptSEXP);
     Rcpp::traits::input_parameter< bool >::type standardize(standardizeSEXP);
     Rcpp::traits::input_parameter< bool >::type singular(singularSEXP);
+    Rcpp::traits::input_parameter< bool >::type scale_sigma_prior(scale_sigma_priorSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type cc(ccSEXP);
-    rcpp_result_gen = Rcpp::wrap(ridge(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, cc));
+    rcpp_result_gen = Rcpp::wrap(ridge(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc));
     return rcpp_result_gen;
 END_RCPP
 }
-// hs_gibbs_no_scaling
-List hs_gibbs_no_scaling(arma::mat Y, arma::mat X, int nsamps, double a, double b);
-RcppExport SEXP bayeslm_hs_gibbs_no_scaling(SEXP YSEXP, SEXP XSEXP, SEXP nsampsSEXP, SEXP aSEXP, SEXP bSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
-    Rcpp::traits::input_parameter< int >::type nsamps(nsampsSEXP);
-    Rcpp::traits::input_parameter< double >::type a(aSEXP);
-    Rcpp::traits::input_parameter< double >::type b(bSEXP);
-    rcpp_result_gen = Rcpp::wrap(hs_gibbs_no_scaling(Y, X, nsamps, a, b));
-    return rcpp_result_gen;
-END_RCPP
-}
+// // hs_gibbs_no_scaling
+// List hs_gibbs_no_scaling(arma::mat Y, arma::mat X, int nsamps, double a, double b, bool scale_sigma_prior);
+// RcppExport SEXP bayeslm_hs_gibbs_no_scaling(SEXP YSEXP, SEXP XSEXP, SEXP nsampsSEXP, SEXP aSEXP, SEXP bSEXP, SEXP scale_sigma_priorSEXP) {
+// BEGIN_RCPP
+//     Rcpp::RObject rcpp_result_gen;
+//     Rcpp::RNGScope rcpp_rngScope_gen;
+//     Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
+//     Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+//     Rcpp::traits::input_parameter< int >::type nsamps(nsampsSEXP);
+//     Rcpp::traits::input_parameter< double >::type a(aSEXP);
+//     Rcpp::traits::input_parameter< double >::type b(bSEXP);
+//     Rcpp::traits::input_parameter< double >::type scale_sigma_prior(scale_sigma_priorSEXP);
+//     rcpp_result_gen = Rcpp::wrap(hs_gibbs_no_scaling(Y, X, nsamps, a, b, scale_sigma_prior));
+//     return rcpp_result_gen;
+// END_RCPP
+// }
 // hs_gibbs
-List hs_gibbs(arma::mat Y, arma::mat X, arma::mat beta_ini, int nsamps, double a, double b);
-RcppExport SEXP bayeslm_hs_gibbs(SEXP YSEXP, SEXP XSEXP, SEXP beta_iniSEXP, SEXP nsampsSEXP, SEXP aSEXP, SEXP bSEXP) {
+List hs_gibbs(arma::mat Y, arma::mat X, int nsamps, double a, double b, bool scale_sigma_prior);
+RcppExport SEXP bayeslm_hs_gibbs(SEXP YSEXP, SEXP XSEXP, SEXP nsampsSEXP, SEXP aSEXP, SEXP bSEXP, SEXP scale_sigma_priorSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type beta_ini(beta_iniSEXP);
     Rcpp::traits::input_parameter< int >::type nsamps(nsampsSEXP);
     Rcpp::traits::input_parameter< double >::type a(aSEXP);
     Rcpp::traits::input_parameter< double >::type b(bSEXP);
-    rcpp_result_gen = Rcpp::wrap(hs_gibbs(Y, X, beta_ini, nsamps, a, b));
+    Rcpp::traits::input_parameter< double >::type scale_sigma_prior(scale_sigma_priorSEXP);
+    rcpp_result_gen = Rcpp::wrap(hs_gibbs(Y, X, nsamps, a, b, scale_sigma_prior));
     return rcpp_result_gen;
 END_RCPP
 }
 
 
 static const R_CallMethodDef CallEntries[] = {
-    {"bayeslm_sharkfin", (DL_FUNC) &bayeslm_sharkfin, 18},
-    {"bayeslm_bayeslm", (DL_FUNC) &bayeslm_bayeslm, 21},
-    {"bayeslm_blasso", (DL_FUNC) &bayeslm_blasso, 17},
-    {"bayeslm_horseshoe", (DL_FUNC) &bayeslm_horseshoe, 18},
-    {"bayeslm_nonlocal", (DL_FUNC) &bayeslm_nonlocal, 18},
-    {"bayeslm_ridge", (DL_FUNC) &bayeslm_ridge, 17},
-    {"bayeslm_hs_gibbs_no_scaling", (DL_FUNC) &bayeslm_hs_gibbs_no_scaling, 5},
+    {"bayeslm_sharkfin", (DL_FUNC) &bayeslm_sharkfin, 19},
+    {"bayeslm_bayeslm", (DL_FUNC) &bayeslm_bayeslm, 22},
+    {"bayeslm_blasso", (DL_FUNC) &bayeslm_blasso, 18},
+    {"bayeslm_horseshoe", (DL_FUNC) &bayeslm_horseshoe, 19},
+    {"bayeslm_nonlocal", (DL_FUNC) &bayeslm_nonlocal, 19},
+    {"bayeslm_ridge", (DL_FUNC) &bayeslm_ridge, 18},
+    // {"bayeslm_hs_gibbs_no_scaling", (DL_FUNC) &bayeslm_hs_gibbs_no_scaling, 6},
     {"bayeslm_hs_gibbs", (DL_FUNC) &bayeslm_hs_gibbs, 6},
 
     {NULL, NULL, 0}

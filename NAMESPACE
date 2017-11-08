@@ -7,7 +7,7 @@ importFrom(grDevices, dev.interactive, devAskNewPage, terrain.colors)
 importFrom("stats", "model.frame", "model.matrix", "model.response", "qnorm", "sd")
 importFrom(coda, effectiveSize)
 
-export(bayeslm,summary.bayeslm.fit, summary.mcmc, hs_gibbs, hs_gibbs_no_scaling)
+export(bayeslm,summary.bayeslm.fit, summary.mcmc, hs_gibbs)
 
 S3method(summary, bayeslm.fit)
 S3method(summary, mcmc)

@@ -25,31 +25,31 @@
 #     .Call('_bayeslm_ridge', PACKAGE = 'bayeslm', Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, verb, icept, standardize, singular)
 # }
 
-horseshoe_cpp_loop = function(Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc){
-            .Call('bayeslm_horseshoe', PACKAGE = 'bayeslm', Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+horseshoe_cpp_loop = function(Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc){
+            .Call('bayeslm_horseshoe', PACKAGE = 'bayeslm', Y, X, penalize, block_vec, prior_type, user_prior_function, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
 }
 
-blasso_cpp_loop = function(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc){
-            .Call('bayeslm_blasso', PACKAGE = 'bayeslm', Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+blasso_cpp_loop = function(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc){
+            .Call('bayeslm_blasso', PACKAGE = 'bayeslm', Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
 }
 
-bridge_cpp_loop = function(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc){
-            .Call('bayeslm_ridge', PACKAGE = 'bayeslm', Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+bridge_cpp_loop = function(Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc){
+            .Call('bayeslm_ridge', PACKAGE = 'bayeslm', Y, X, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
 }
 
-nonlocal_cpp_loop = function(Y, X, prior_mean, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc){
-            .Call('bayeslm_nonlocal', PACKAGE = 'bayeslm', Y, X, prior_mean, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+nonlocal_cpp_loop = function(Y, X, prior_mean, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc){
+            .Call('bayeslm_nonlocal', PACKAGE = 'bayeslm', Y, X, prior_mean, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
 }
 
-sharkfin_cpp_loop = function(Y, X, prob_vec, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc){
-            .Call('bayeslm_sharkfin', PACKAGE = 'bayeslm', Y, X, prob_vec, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, cc)
+sharkfin_cpp_loop = function(Y, X, prob_vec, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc){
+            .Call('bayeslm_sharkfin', PACKAGE = 'bayeslm', Y, X, prob_vec, penalize, block_vec, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, verb, icept, standardize, singular, scale_sigma_prior, cc)
 }
 
 
-hs_gibbs_no_scaling <- function(Y, X, nsamps = 1000L, a = 1, b = 1) {
-    .Call('bayeslm_hs_gibbs_no_scaling', PACKAGE = 'bayeslm', Y, X, nsamps, a, b)
-}
+# hs_gibbs_no_scaling <- function(Y, X, nsamps = 1000L, a = 1, b = 1, scale_sigma_prior = TRUE) {
+#     .Call('bayeslm_hs_gibbs_no_scaling', PACKAGE = 'bayeslm', Y, X, nsamps, a, b, scale_sigma_prior)
+# }
 
-hs_gibbs <- function(Y, X, beta_ini, nsamps = 1000L, a = 1, b = 1) {
-    .Call('bayeslm_hs_gibbs', PACKAGE = 'bayeslm', Y, X, beta_ini, nsamps, a, b)
+hs_gibbs <- function(Y, X, nsamps = 1000L, a = 1, b = 1, scale_sigma_prior = TRUE) {
+    .Call('bayeslm_hs_gibbs', PACKAGE = 'bayeslm', Y, X, nsamps, a, b, scale_sigma_prior)
 }

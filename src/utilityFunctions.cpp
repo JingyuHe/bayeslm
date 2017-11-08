@@ -70,8 +70,11 @@ double user_prior_function_wrapper(arma::mat beta, arma::vec v, Rcpp::Function f
 
 
 
-double log_horseshoe_approx_prior(arma::mat beta, double v, arma::uvec penalize)
+double log_horseshoe_approx_prior(arma::mat beta, double v, double sigma, arma::uvec penalize, bool scale_sigma_prior)
 {
+    if(scale_sigma_prior == true){
+        v = v * sigma;
+    }
     arma::uvec penalize_index = find(penalize > 0);
     arma::vec beta2 = conv_to<vec>::from(beta.rows(penalize_index));
     double p = (double) beta2.n_elem;
@@ -186,7 +189,10 @@ double log_normal_density(double x, double mu, double sigma){
 }
 
 
-double log_asymmetric_prior(arma::mat beta, double vglobal, arma::vec prob, arma::uvec penalize){
+double log_asymmetric_prior(arma::mat beta, double vglobal, double sigma, arma::vec prob, arma::uvec penalize, bool scale_sigma_prior){
+    if(scale_sigma_prior == true){
+        vglobal = vglobal * sigma;
+    }
     arma::uvec penalize_index = find(penalize > 0);
     beta = beta.rows(penalize_index);
     prob = prob.rows(penalize_index);
@@ -216,7 +222,10 @@ double log_cauchy_density(double x){
 }
 
 
-double log_nonlocal_prior(arma::mat beta, double vglobal, arma::uvec penalize, arma::vec prior_mean){
+double log_nonlocal_prior(arma::mat beta, double vglobal, double sigma, arma::uvec penalize, arma::vec prior_mean, bool scale_sigma_prior){
+    if(scale_sigma_prior == true){
+        vglobal = vglobal * sigma;
+    }
     // scale by vglobal
     arma::uvec penalize_index = find(penalize > 0);
     prior_mean = prior_mean.rows(penalize_index);
@@ -236,9 +245,12 @@ double log_nonlocal_prior(arma::mat beta, double vglobal, arma::uvec penalize, a
 
 
 
-double log_ridge_prior(arma::mat beta, double lambda, double vglobal, arma::uvec penalize){
+double log_ridge_prior(arma::mat beta, double lambda, double vglobal, double sigma, arma::uvec penalize, bool scale_sigma_prior){
     // lambda is in variance scale
     // beta ~ N(0, 1 / lambda)
+    if(scale_sigma_prior == true){
+        vglobal = vglobal * sigma;
+    }
     arma::uvec penalize_index = find(penalize > 0);
     beta = beta.rows(penalize_index); // only care about elements with penalization
 
@@ -271,5 +283,77 @@ double log_laplace_prior(arma::mat beta, double tau, double sigma, double vgloba
 
 
 
+
+
+
+arma::mat sampling_beta(arma::mat mu_n, arma::mat chol_Lambda_n_inv, double sigma, int p, bool scale_sigma_prior){
+
+    arma::vec eps = Rcpp::rnorm(p);
+    arma::mat output;
+    if(scale_sigma_prior == true){
+        output = sigma * chol_Lambda_n_inv * eps + mu_n;
+    }else{
+        output = sigma * chol_Lambda_n_inv * eps + mu_n;
+    }
+    return output;
+
+}
+
+
+double sampling_sigma(double a_n, double b_0, arma::mat YY, arma::mat mu_n, arma::mat Lambda_n){
+    double b_n = b_0 + 0.5 * as_scalar(YY - mu_n.t() * Lambda_n * mu_n);
+    double output = 1.0 / sqrt(Rcpp::rgamma(1, a_n, 1.0 / b_n)[0]);
+    return output;
+}
+
+
+arma::vec sampling_lambda(arma::mat lambda, arma::mat beta, double sigma, double tau, int p, bool scale_sigma_prior){
+    // slice sampling for lambda
+    // loop over all parameters
+    arma::vec gamma_l(p);
+    double u1;
+    double trunc_limit;
+    arma::mat mu2_j;
+    if(scale_sigma_prior == true){
+        mu2_j = pow(beta / (sigma * tau), 2);
+    }else{
+        mu2_j = pow(beta / tau, 2);
+    }
+
+    arma::mat rate_lambda = mu2_j / 2.0;
+    arma::vec ub_lambda(p);
+    double u2;
+    for(int i = 0; i < p; i ++){
+        gamma_l(i) = 1.0 / pow(lambda(i) , 2);
+        u1 = Rcpp::runif(1, 0, 1.0 / (1.0 + gamma_l(i)))[0];
+        trunc_limit = (1.0 - u1) / u1;
+        ub_lambda(i) = R::pexp(trunc_limit, 1.0 / rate_lambda(i), 1, 0);
+        u2 = Rcpp::runif(1, 0, ub_lambda(i))[0];
+        gamma_l(i) = R::qexp(u2, 1.0 / rate_lambda(i), 1, 0);
+    }
+    gamma_l = 1.0 / arma::sqrt(gamma_l);
+    return gamma_l;
+}
+
+
+double sampling_tau(arma::mat lambda, arma::mat beta, double sigma, double tau, bool scale_sigma_prior){
+    // slice sampling for tau
+    double shape_tau = 0.5 * (1.0 + lambda.n_elem);
+    double gamma_tt = 1.0 / pow(tau, 2.0);
+    double u1 = Rcpp::runif(1, 0, 1.0 / (1.0 + gamma_tt))[0];
+    double trunc_limit_tau = (1.0 - u1) / u1;
+    double mu2_tau;
+    if(scale_sigma_prior == true){
+        mu2_tau = as_scalar(arma::sum(pow(beta / (sigma * lambda), 2), 1));
+    }else{
+        mu2_tau = as_scalar(arma::sum(pow(beta / lambda, 2), 1));
+    }
+    double rate_tau = mu2_tau / 2.0;
+    double ub_tau = R::pgamma(trunc_limit_tau, shape_tau, 1.0 / rate_tau, 1, 0);
+    double u2 = Rcpp::runif(1, 0, ub_tau)[0];
+    gamma_tt = R::qgamma(u2, shape_tau, 1.0 / rate_tau, 1, 0);
+    double output = 1.0 / sqrt(gamma_tt);
+    return output;
+}
 
 
