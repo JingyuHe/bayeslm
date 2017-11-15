@@ -1,6 +1,7 @@
 useDynLib(bayeslm)
 # exportPattern("^[[:alpha:]]+")
 importFrom(Rcpp, evalCpp)
+importFrom(RcppParallel, RcppParallelLibs)
 importFrom(stats, acf, cov, dnbinom, dnorm, lm, median, optim, pnorm, qchisq, quantile, rmultinom, rnorm, runif, var)
 importFrom(graphics, abline, boxplot, bxp, contour, hist, image, lines, par, plot, plot.default, points, polygon, text, title)
 importFrom(grDevices, dev.interactive, devAskNewPage, terrain.colors)

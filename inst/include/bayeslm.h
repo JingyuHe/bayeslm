@@ -5,10 +5,12 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::plugins(cpp11)]]
 #include <RcppArmadillo.h>
+#include <RcppParallel.h>
 #include <cmath>
 #include <time.h>
 #include <stdlib.h>
 #include <iostream>
+using namespace RcppParallel;
 using namespace Rcpp;
 using namespace arma;
 using namespace std;
@@ -26,6 +28,7 @@ double log_normal_prior(arma::mat beta, arma::vec v);
 // double betaprior(arma::mat beta, arma::vec v, int prior, Rcpp::Nullable<Rcpp::Function> user_prior_function);
 double user_prior_function_wrapper(arma::mat beta, arma::vec v, Rcpp::Function f);
 arma::field<arma::mat> conditional_factors(arma::mat X, arma::vec V);
+arma::field<arma::mat> conditional_factors_parallel(arma::mat X, arma::vec V);
 double log_normal_density(double x, double mu, double sigma);
 double log_cauchy_density(double x);
 double log_nonlocal_prior(arma::mat beta, double vglobal, double sigma, arma::uvec penalize, arma::vec prob, bool scale_sigma_prior);

@@ -10,7 +10,7 @@ blocked elliptical slice sampler, ridge prior
 // [[Rcpp::export]]
 List ridge(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type = 1, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, bool scale_sigma_prior = true, arma::vec cc = NULL){
 
-    clock_t t = clock();
+    auto t0 = std::chrono::high_resolution_clock::now();
 
     arma::vec beta_hat;
     arma::vec beta;
@@ -126,7 +126,7 @@ List ridge(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, i
     /*
         pre-loop computation for conditional mean and covariance matrix given other blocks
     */
-    arma::field<arma::mat> output = conditional_factors(Sigma, block_vec);
+    arma::field<arma::mat> output = conditional_factors_parallel(Sigma, block_vec);
     arma::field<arma::mat> mean_factors = output.rows(0, N_blocks-1);
     arma::field<arma::mat> chol_factors = output.rows(N_blocks, 2 * N_blocks - 1);
 
@@ -150,11 +150,11 @@ List ridge(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, i
     
     arma::vec beta_hat_lastround = beta_hat;
 
-    t = clock() - t;
-    Rcpp::Rcout << "fixed running time " << (double)t  / (double)CLOCKS_PER_SEC << endl;
+    auto t1 = std::chrono::high_resolution_clock::now();
+    auto time_fixed = 1.e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
+    Rcpp::Rcout << "fixed running time " << time_fixed << endl;
 
-    t = clock();
-
+    t0 = std::chrono::high_resolution_clock::now();
     double lambda_prop = 1.0;
     arma::vec lambdasamps(nsamps);
     lambdasamps.fill(0.0);
@@ -274,8 +274,9 @@ List ridge(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, i
         loopcount = 0;
     }
 
-    t = clock() - t;
-    Rcpp::Rcout << "sampling time " << (double)t /(double) CLOCKS_PER_SEC << endl;
+    t1 = std::chrono::high_resolution_clock::now();
+    auto time_sampling = 1.e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
+    Rcpp::Rcout << "sampling time " << time_sampling << endl;
 
     // X and Y were scaled at the beginning, rescale estimations
     for(int ll = 0; (unsigned) ll < bsamps.n_cols; ll ++){

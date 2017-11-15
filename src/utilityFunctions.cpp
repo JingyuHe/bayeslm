@@ -29,6 +29,56 @@ double log_normal_density_matrix_2(arma::mat x, arma::vec sig_diag, bool singula
     return(output);
 }
 
+struct block_factor : public Worker {
+    // input matrix, pass by reference
+    const arma::mat& X;
+    const arma::vec& V;
+    const arma::uvec& block_size_vec;
+    arma::field<arma::mat>& output;
+
+    // constructor
+    block_factor(const arma::mat& X, const arma::vec& V, const arma::uvec& block_size_vec, arma::field<arma::mat>& output) : X(X), V(V), block_size_vec(block_size_vec), output(output) {}
+
+    // function call operator that work for specified index range
+    void operator()(std::size_t begin, std::size_t end){
+        int n_blocks = V.n_elem;
+        arma::mat temp;
+        arma::mat temp11;
+        arma::mat temp12;
+        arma::mat temp22;
+        int block_size_cumulate = 0;
+        int block_size_cumulate_next = 0;
+        for(std::size_t i = begin; i < end; i++){
+            block_size_cumulate = block_size_vec(i);
+            block_size_cumulate_next = block_size_vec(i) + V(i);
+            // other subsequent blocks, subscripts begin from block_size_cumulate to block_size_cumulate + V(i)
+            temp11 = X.submat(block_size_cumulate, block_size_cumulate, block_size_cumulate_next - 1, block_size_cumulate_next - 1);
+            temp12 = X.rows(block_size_cumulate, block_size_cumulate_next - 1);
+            temp12.shed_cols(block_size_cumulate, block_size_cumulate_next - 1);
+            temp22 = X;
+            temp22.shed_rows(block_size_cumulate, block_size_cumulate_next - 1);
+            temp22.shed_cols(block_size_cumulate, block_size_cumulate_next - 1);
+            temp = solve(temp22, temp12.t()); // faster than inv(temp22) * temp21
+            output(i + n_blocks) = chol(temp11 - temp12 * temp, "lower");
+            output(i) = temp.t();
+            // block_size_cumulate += V(i);
+        }       
+    }
+};
+
+
+arma::field<arma::mat> conditional_factors_parallel(arma::mat X, arma::vec V){
+    int n_blocks = V.n_elem;
+    arma::vec V_cumsum = arma::cumsum(V);
+    V_cumsum = V_cumsum - V(0);
+    arma::uvec block_size_vec = conv_to<arma::uvec>::from(V_cumsum);
+    arma::field<arma::mat> output(n_blocks * 2);
+    block_factor block_factor(X, V, block_size_vec, output);
+    parallelFor(0, n_blocks, block_factor);
+
+    return output;
+}
+
 
 // double betaprior(arma::mat beta, arma::vec v, int prior, Rcpp::Nullable<Rcpp::Function> user_prior_function){
     
