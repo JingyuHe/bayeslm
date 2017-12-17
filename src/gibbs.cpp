@@ -1,4 +1,4 @@
-#include "bayeslm.h"
+#include "../inst/include/bayeslm.h"
 /*
 
 
