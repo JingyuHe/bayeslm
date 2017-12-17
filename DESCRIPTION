@@ -4,12 +4,12 @@ Title: Efficient Sampling for Gaussian Linear Regression with Arbitrary
         Priors
 Version: 0.6.0
 Date: 2017-11-08
-Author: P. Richard Hahn, Jingyu He and Hedibert Lopes
+Author: P. Richard Hahn, Jingyu He, Hedibert Lopes
 Maintainer: Jingyu He <jingyu.he@chicagobooth.edu>
 Description: Efficient sampling for Gaussian linear regression with arbitrary priors.
 License: LGPL (>= 2)
 Imports: Rcpp (>= 0.12.7), stats, graphics, grDevices, coda, RcppParallel
-SystemRequirements: A C++11 compiler.
+SystemRequirements: GNU make
 Depends: R (>= 2.10)
 URL: http://jingyuhe.com/software.html
 NeedsCompilation: yes
