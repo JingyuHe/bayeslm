@@ -3,7 +3,7 @@ Type: Package
 Title: Efficient Sampling for Gaussian Linear Regression with Arbitrary
         Priors
 Version: 0.6.0
-Date: 2017-11-08
+Date: 2017-12-17
 Author: P. Richard Hahn, Jingyu He, Hedibert Lopes
 Maintainer: Jingyu He <jingyu.he@chicagobooth.edu>
 Description: Efficient sampling for Gaussian linear regression with arbitrary priors.
