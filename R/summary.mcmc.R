@@ -93,7 +93,8 @@ summary.mcmc=function(object,names,burnin=trunc(.1*nrow(X)),quantiles=FALSE,trai
      qmat=apply(X,2,quantile,probs=c(.025,.05,.5,.95,.975))
      colnames(qmat)=names
      cat("\n Quantiles \n")
-     print(t(qmat),digits=2)}
-
+     print(t(qmat),digits=2)
+   }
+  return(invisible(1))
   # invisible(t(mat))
 }
