@@ -1,6 +1,6 @@
 # bayeslm
 ## Description
-Efficient sampling for Gaussian linear regression with arbitrary priors. This package implements Bayesian linear regression using elliptical slice sampler, which allows easily useage of arbitrary priors.
+Efficient sampling for Gaussian linear regression with arbitrary priors. This package implements Bayesian linear regression using elliptical slice sampler, which allows easily useage of arbitrary priors. This package is parallelized by RcppParallel.
 
 
 ## Install
