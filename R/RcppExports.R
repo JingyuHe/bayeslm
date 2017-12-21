@@ -53,3 +53,7 @@ sharkfin_cpp_loop = function(Y, X, prob_vec, penalize, block_vec, prior_type, si
 hs_gibbs <- function(Y, X, nsamps = 1000L, a = 1, b = 1, scale_sigma_prior = TRUE) {
     .Call('bayeslm_hs_gibbs', PACKAGE = 'bayeslm', Y, X, nsamps, a, b, scale_sigma_prior)
 }
+
+hs_gibbs_2 <- function(Y, X, nsamps = 1000L, a = 1, b = 1, scale_sigma_prior = TRUE) {
+    .Call('bayeslm_hs_gibbs_2', PACKAGE = 'bayeslm', Y, X, nsamps, a, b, scale_sigma_prior)
+}

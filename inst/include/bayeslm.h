@@ -39,6 +39,9 @@ arma::mat sampling_beta(arma::mat mu_n, arma::mat chol_Lambda_n_inv, double sigm
 double sampling_sigma(double a_n, double b_0, arma::mat YY, arma::mat mu_n, arma::mat Lambda_n);
 arma::vec sampling_lambda(arma::mat lambda, arma::mat beta, double sigma, double tau, int p, bool scale_sigma_prior);
 double sampling_tau(arma::mat lambda, arma::mat beta, double sigma, double tau, bool scale_sigma_prior);
+
+arma::mat sampling_beta_2(arma::mat old_beta, arma::mat mu_n, double sigma, int p, bool scale_sigma_prior, arma::mat lambda, double tau, arma::mat X, arma::mat Y);
+
 //
 
 #endif

@@ -212,6 +212,22 @@ BEGIN_RCPP
 END_RCPP
 }
 
+// hs_gibbs_2
+List hs_gibbs_2(arma::mat Y, arma::mat X, int nsamps, double a, double b, bool scale_sigma_prior);
+RcppExport SEXP bayeslm_hs_gibbs_2(SEXP YSEXP, SEXP XSEXP, SEXP nsampsSEXP, SEXP aSEXP, SEXP bSEXP, SEXP scale_sigma_priorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+    Rcpp::traits::input_parameter< int >::type nsamps(nsampsSEXP);
+    Rcpp::traits::input_parameter< double >::type a(aSEXP);
+    Rcpp::traits::input_parameter< double >::type b(bSEXP);
+    Rcpp::traits::input_parameter< double >::type scale_sigma_prior(scale_sigma_priorSEXP);
+    rcpp_result_gen = Rcpp::wrap(hs_gibbs_2(Y, X, nsamps, a, b, scale_sigma_prior));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"bayeslm_sharkfin", (DL_FUNC) &bayeslm_sharkfin, 19},
@@ -222,7 +238,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"bayeslm_ridge", (DL_FUNC) &bayeslm_ridge, 18},
     // {"bayeslm_hs_gibbs_no_scaling", (DL_FUNC) &bayeslm_hs_gibbs_no_scaling, 6},
     {"bayeslm_hs_gibbs", (DL_FUNC) &bayeslm_hs_gibbs, 6},
-
+    {"bayeslm_hs_gibbs_2", (DL_FUNC) &bayeslm_hs_gibbs_2, 6},
     {NULL, NULL, 0}
 };
 
