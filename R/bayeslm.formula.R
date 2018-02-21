@@ -69,11 +69,11 @@ bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior 
 
 
     if(is.null(NULL)){
-        cc = rep(10, dim(X)[2])
+        cc = rep(1, dim(X)[2])
     }
 
     if(icept == TRUE){
-        cc = c(10, cc)
+        cc = c(1, cc)
     }
 
     try(if(dim(Y)[1] != dim(X)[1]) stop("Length of X and Y don't agree."))

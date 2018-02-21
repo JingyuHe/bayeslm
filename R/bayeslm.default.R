@@ -5,11 +5,11 @@ bayeslm.default <- function(Y, X = FALSE, prior = "horseshoe", penalize = NULL, 
     X = as.matrix(X)
 
     if(is.null(cc)){
-        cc = rep(10, dim(X)[2])
+        cc = rep(1, dim(X)[2])
     }
 
     if(icept == TRUE){
-        cc = c(10, cc)
+        cc = c(1, cc)
     }
 
     try(if(dim(Y)[1] != dim(X)[1]) stop("Length of X and Y don't agree."))
