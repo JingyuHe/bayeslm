@@ -236,8 +236,12 @@ List nonlocal(arma::mat Y, arma::mat X, arma::vec prior_mean, arma::uvec penaliz
 
 
         // update sigma
-        ssq = as_scalar(YY) - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b));
-
+        if(scale_sigma_prior == false){
+            ssq = as_scalar(YY) - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b));
+        }else{
+            ssq = as_scalar(YY) - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b)) + as_scalar(trans(b) * b);
+        }
+        
         s = 1.0 / sqrt(arma::as_scalar(arma::randg(1, distr_param((n + kap2) / 2.0, 2.0 / (ssq + s2)))));
         
         iter = iter + 1;
