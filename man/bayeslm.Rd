@@ -42,7 +42,7 @@ prob_vec = NULL, cc = NULL, ...)
   \item{thinning}{Number of thinnings. \code{thinning = 1} means no thinning.}
   \item{vglobal}{Initial value of global shrinkage parameter.}
   \item{verb}{Bool, if \code{TRUE}, print out sampling progress.}
-  \item{icept}{Bool, if \code{TRUE}, add an intercept. Default value is \code{TRUE}.}
+  \item{icept}{Bool, if the inputs are matrix \code{X} and \code{Y}, and \code{icept = TRUE}, the function will estimate intercept. Default value is \code{TRUE}. If the input is formula \code{Y ~ X}, option \code{icept} is useless, control intercept by formular \code{Y ~ X} or \code{Y ~ X - 1}.}
   \item{standardize}{Bool, if \code{TRUE}, standardize X and Y before sampling.}
   \item{singular}{Bool, if \code{TRUE}, take it as a rank-deficient case such as n < p or X'X is singular. See section 2.3.2 of the paper for details.}
   \item{scale_sigma_prior}{Bool, if \code{TRUE}, the prior of regression coefficient \eqn{\beta} is scaled by residual standard error \eqn{\sigma}.}
