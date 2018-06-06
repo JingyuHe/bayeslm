@@ -32,10 +32,13 @@ List bayeslm(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec,
         sdx.fill(1.0);
     }
     
+    arma::vec X_mean(X.n_cols);
+    
     // intercepts
     if(icept == true){
         // if add a column of ones for intercept
         if(standardize == true){
+            X_mean = arma::mean(X, 0).t();
             X = scaling(X);
             Y = Y / sdy;
         }
@@ -272,6 +275,13 @@ List bayeslm(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec,
         bsamps.col(ll) = bsamps.col(ll) / trans(sdx) * sdy;
     }
 
+    // adjust intercept if standardize all X variables
+    if(icept && standardize){
+        for(size_t ll = 0; ll < bsamps.n_cols; ll ++ )
+        {   
+            bsamps(0, ll) = bsamps(0, ll) - arma::sum(bsamps.submat(1, ll, p-1, ll) % X_mean);
+        }            
+    }
 
     ssamps = ssamps * sdy;
 
