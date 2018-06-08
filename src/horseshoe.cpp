@@ -10,7 +10,7 @@ blocked elliptical slice sampler, horseshoe prior
 #include <chrono>
 
 // [[Rcpp::export]]
-List horseshoe(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type = 1, Rcpp::Nullable<Rcpp::Function> user_prior_function = R_NilValue, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1.0, double vglobal = 1.0, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, bool scale_sigma_prior = true, arma::vec cc = NULL){
+List horseshoe(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, int prior_type = 1, Rcpp::Nullable<Rcpp::Function> user_prior_function = R_NilValue, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1.0, double vglobal = 1.0, bool sampling_vglobal = true, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, bool scale_sigma_prior = true, arma::vec cc = NULL){
 
     auto t0 = std::chrono::high_resolution_clock::now();
 
@@ -234,16 +234,16 @@ List horseshoe(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_ve
         }
 
 
-        // update the global shrinkage parameter
-        vgprop = exp(log(vglobal) + arma::as_scalar(randn(1)) * 0.2);
+        if(sampling_vglobal){
+            // update the global shrinkage parameter
+            vgprop = exp(log(vglobal) + arma::as_scalar(randn(1)) * 0.2);
+            // if there is no intercept, pass the full vector
+            ratio = exp(log_horseshoe_approx_prior(b, vgprop, s, penalize, scale_sigma_prior) - log_horseshoe_approx_prior(b, vglobal, s, penalize, scale_sigma_prior) + log(vgprop) - log(vglobal));
 
 
-        // if there is no intercept, pass the full vector
-        ratio = exp(log_horseshoe_approx_prior(b, vgprop, s, penalize, scale_sigma_prior) - log_horseshoe_approx_prior(b, vglobal, s, penalize, scale_sigma_prior) + log(vgprop) - log(vglobal));
-
-
-        if(as_scalar(randu(1)) < ratio){
-            vglobal = vgprop;
+            if(as_scalar(randu(1)) < ratio){
+                vglobal = vgprop;
+            }
         }
 
         
