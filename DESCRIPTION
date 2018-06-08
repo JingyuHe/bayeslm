@@ -8,9 +8,11 @@ Author: P. Richard Hahn, Jingyu He, Hedibert Lopes
 Maintainer: Jingyu He <jingyu.he@chicagobooth.edu>
 Description: Efficient sampling for Gaussian linear regression with arbitrary priors.
 License: LGPL (>= 2)
-Imports: Rcpp (>= 0.12.7), stats, graphics, grDevices, coda, RcppParallel
+Imports: Rcpp (>= 0.12.7), stats, graphics, grDevices, coda,
+        RcppParallel
 SystemRequirements: GNU make
 Depends: R (>= 2.10)
 URL: http://jingyuhe.com/software.html
 NeedsCompilation: yes
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel
+Packaged: 2018-06-06 04:02:21 UTC; jingyuhe

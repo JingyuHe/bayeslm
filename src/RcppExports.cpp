@@ -236,12 +236,12 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"bayeslm_sharkfin", (DL_FUNC) &bayeslm_sharkfin, 19},
-    {"bayeslm_bayeslm", (DL_FUNC) &bayeslm_bayeslm, 22},
-    {"bayeslm_blasso", (DL_FUNC) &bayeslm_blasso, 18},
-    {"bayeslm_horseshoe", (DL_FUNC) &bayeslm_horseshoe, 19},
-    {"bayeslm_nonlocal", (DL_FUNC) &bayeslm_nonlocal, 19},
-    {"bayeslm_ridge", (DL_FUNC) &bayeslm_ridge, 18},
+    {"bayeslm_sharkfin", (DL_FUNC) &bayeslm_sharkfin, 20},
+    {"bayeslm_bayeslm", (DL_FUNC) &bayeslm_bayeslm, 23},
+    {"bayeslm_blasso", (DL_FUNC) &bayeslm_blasso, 19},
+    {"bayeslm_horseshoe", (DL_FUNC) &bayeslm_horseshoe, 20},
+    {"bayeslm_nonlocal", (DL_FUNC) &bayeslm_nonlocal, 20},
+    {"bayeslm_ridge", (DL_FUNC) &bayeslm_ridge, 19},
     // {"bayeslm_hs_gibbs_no_scaling", (DL_FUNC) &bayeslm_hs_gibbs_no_scaling, 6},
     {"bayeslm_hs_gibbs", (DL_FUNC) &bayeslm_hs_gibbs, 6},
     {"bayeslm_hs_gibbs_2", (DL_FUNC) &bayeslm_hs_gibbs_2, 6},

@@ -8,10 +8,10 @@ importFrom(grDevices, dev.interactive, devAskNewPage, terrain.colors)
 importFrom("stats", "model.frame", "model.matrix", "model.response", "qnorm", "sd")
 importFrom(coda, effectiveSize)
 
-export(bayeslm,summary.bayeslm.fit, summary.mcmc, hs_gibbs)
+export(bayeslm,summary.bayeslm.fit, summary.MCMC, hs_gibbs, plot.MCMC)
 
 S3method(summary, bayeslm.fit)
-S3method(summary, mcmc)
+S3method(summary, MCMC)
 S3method(bayeslm, default)
 S3method(bayeslm, formula)
-S3method(plot, mcmc)
+S3method(plot, MCMC)

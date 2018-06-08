@@ -6,7 +6,7 @@ summary.bayeslm.fit = function(object, names, burnin=NULL,quantiles=FALSE,traile
     cat("Average number of rejections before one acceptance : \n")
     cat(mean(object$loops), "\n")
     cat("Summary of beta draws \n")
-    summary.mcmc(object$beta, names, burnin, quantiles, trailer, ...)
+    summary.MCMC(object$beta, names, burnin, quantiles, trailer, ...)
     cat("\n")
     cat("Summary of sigma draws \n")
     cat("Mean of standard deviation is ", mean(object$sigma[-c(1:burnin)]) ,"\n")

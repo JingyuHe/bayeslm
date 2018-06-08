@@ -1,4 +1,4 @@
-plot.mcmc=function(x,names,burnin=trunc(.1*nrow(X)),tvalues,TRACEPLOT=TRUE,DEN=TRUE,INT=TRUE,
+plot.MCMC=function(x,names,burnin=trunc(.1*nrow(X)),tvalues,TRACEPLOT=TRUE,DEN=TRUE,INT=TRUE,
       CHECK_NDRAWS=TRUE,...){
 #
 #  S3 method to print matrices of draws the object X is of class "bayesm.mat"

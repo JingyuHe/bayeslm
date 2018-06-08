@@ -1,4 +1,4 @@
-summary.mcmc=function(object,names,burnin=trunc(.1*nrow(X)),quantiles=FALSE,trailer=TRUE,...){
+summary.MCMC=function(object,names,burnin=trunc(.1*nrow(X)),quantiles=FALSE,trailer=TRUE,...){
 #
 # S3 method to compute and print posterior summaries for a matrix of draws
 # Modified from package bayesm, author P. Rossi 2/07
