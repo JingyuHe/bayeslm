@@ -1,11 +1,11 @@
-predict.bayeslm.fit = function(object, data, burnin = NULL, x = NULL...){
+predict.bayeslm.fit = function(object, data, burnin = NULL, X = NULL...){
     if(missing(data) && (!is.null(object$call$formula))){
         cat("You train the model with a formula.")
         cat("New data frame is missing, you need to provide one. \n")
         return()
     }
 
-    if(missing(x) && (is.null(object$call$formula))){
+    if(missing(X) && (is.null(object$call$formula))){
         cat("You train the model with matrix input.")
         cat("New covariate matrix is missing, you need to provide one. \n")
     }
@@ -34,18 +34,18 @@ predict.bayeslm.fit = function(object, data, burnin = NULL, x = NULL...){
     if(is.null(object$call$formula)){
         # when train the data, inputs are y, X matrices rather than formula
         if(object$icept == TRUE){
-            if(ncol(x) != (length(post_mean) - 1)){
+            if(ncol(X) != (length(post_mean) - 1)){
                 cat("There is an intercept, but dimension of X and posterior draws do not match. \n")
                 return()
             }
-            x = cbind(1, x)
-            pred = x %*% post_mean
+            X = cbind(1, X)
+            pred = X %*% post_mean
         }else{
-            if(ncol(x) != length(post_mean)){
+            if(ncol(X) != length(post_mean)){
                 cat("No intercept, dimension of X and posterior draws do not match. \n")
                 return()
             }
-            pred = x %*% post_mean
+            pred = X %*% post_mean
         }
     }else{
         formula = object$call$formula
