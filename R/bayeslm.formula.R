@@ -145,10 +145,12 @@ bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior 
     attributes(output)$class = c("bayeslm.fit")
     colnames(output$beta) = Xnames
     colnames(output$sigma) = "sigma"
+    output$terms = terms(formula)
     
     output$call = this.call
     output$fitted.value = fittedvalue
     output$residuals = residuals
+    output$icept = icept
 
     return(output)
 }

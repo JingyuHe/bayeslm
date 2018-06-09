@@ -4,6 +4,8 @@ bayeslm.default <- function(Y, X = FALSE, prior = "horseshoe", penalize = NULL, 
 
     X = as.matrix(X)
 
+    this.call = match.call()
+
     if(is.null(cc)){
         cc = rep(1, dim(X)[2])
     }
@@ -85,6 +87,7 @@ bayeslm.default <- function(Y, X = FALSE, prior = "horseshoe", penalize = NULL, 
     attributes(output)$class = c("bayeslm.fit")
     colnames(output$beta) = Xnames
     colnames(output$sigma) = "sigma"    
+    output$terms = NULL
     
     N = dim(output$beta)[1]
 
@@ -95,9 +98,10 @@ bayeslm.default <- function(Y, X = FALSE, prior = "horseshoe", penalize = NULL, 
     }
     residuals = Y - fittedvalue
 
-    output$call = NULL
+    output$call = this.call
     output$fitted.value = fittedvalue
     output$residuals = residuals
+    output$icept = icept
 
 
     return(output)
