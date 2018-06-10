@@ -75,6 +75,7 @@ prob_vec = NULL, cc = NULL, ...)
 
 
 \examples{
+\dontrun{
 p = 20
 n = 100
 
@@ -156,7 +157,7 @@ print(cbind(ols = rmseOLS, hs = rmse1,laplace = rmse2,
 ridge = rmse3,sharkfin = rmse4,nonlocal = rmse5))
 
 
-
+}
 }
 
 \keyword{  linear regression }
