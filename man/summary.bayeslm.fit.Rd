@@ -34,4 +34,4 @@ The function also returns significance level, defined by whether the symmetric p
 \dontrun{fit=bayeslm(y~x, data = data); summary(fit)}
 }
 
-\keyword{univar}
+\keyword{summary}

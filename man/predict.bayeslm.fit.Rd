@@ -8,7 +8,7 @@
 }
 
 \usage{
-\method{summary}{mcmc}(object,names,burnin=trunc(.1*nrow(X)),quantiles=FALSE,trailer=TRUE,...)
+\method{predict}{bayeslm.fit}(object,data,burnin,X,...)
 }
 
 \arguments{
@@ -26,6 +26,7 @@ Make prediction on new data set, users are allowed to adjust number of burn-in s
 \author{Jingyu He}
 
 \examples{
+\dontrun{
 x = matrix(rnorm(1000), 100, 10)
 y = x %*% rnorm(10) + rnorm(100)
 data = list(x = x, y = y)
@@ -39,5 +40,5 @@ pred1 = predict(fit1, data)
 fit2 = bayeslm(Y = y, X = x)
 pred2 = predict(fit2, X = x)
 }
-
+}
 \keyword{univar}

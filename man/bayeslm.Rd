@@ -10,14 +10,14 @@
 \usage{
 \method{bayeslm}{default}(Y, X = FALSE, prior = "horseshoe", penalize = NULL, 
 block_vec = NULL, sigma = NULL, s2 = 1, kap2 = 1, N = 20000L, burnin = 0L, 
-thinning = 1L, vglobal = 1, verb = FALSE, icept = TRUE, standardize = TRUE, 
-singular = FALSE, scale_sigma_prior = TRUE, prior_mean = NULL, 
+thinning = 1L, vglobal = 1, sampling_vglobal = TRUE, verb = FALSE, icept = TRUE, 
+standardize = TRUE, singular = FALSE, scale_sigma_prior = TRUE, prior_mean = NULL, 
 prob_vec = NULL, cc = NULL, ...)
 
 \method{bayeslm}{formula}(formula, data = list(), Y = FALSE, X = FALSE, 
 prior = "horseshoe", penalize = NULL, block_vec = NULL, sigma = NULL, 
 s2 = 1, kap2 = 1, N = 20000L, burnin = 0L, thinning = 1L, vglobal = 1, 
-verb = FALSE, standardize = TRUE, singular = FALSE, 
+sampling_vglobal = TRUE, verb = FALSE, standardize = TRUE, singular = FALSE, 
 scale_sigma_prior = TRUE, prior_mean = NULL, 
 prob_vec = NULL, cc = NULL, ...)
 }
@@ -40,7 +40,8 @@ prob_vec = NULL, cc = NULL, ...)
   \item{N}{Number of posterior samples (after burn-in).}
   \item{burnin}{Number of burn-in samples. If burnin > 0, the function will draw N + burnin samples and return the last N samples only.}
   \item{thinning}{Number of thinnings. \code{thinning = 1} means no thinning.}
-  \item{vglobal}{Initial value of global shrinkage parameter.}
+  \item{vglobal}{Initial value of global shrinkage parameter. Default value is 1}
+  \item{sampling_vglobal}{\code{Bool}, if \code{TRUE}, sampling the global shrinkage parameter by random walk Metropolis Hastings on log scale, otherwise always stay at the initial value \code{vglobal}.}
   \item{verb}{Bool, if \code{TRUE}, print out sampling progress.}
   \item{icept}{Bool, if the inputs are matrix \code{X} and \code{Y}, and \code{icept = TRUE}, the function will estimate intercept. Default value is \code{TRUE}. If the input is formula \code{Y ~ X}, option \code{icept} is useless, control intercept by formular \code{Y ~ X} or \code{Y ~ X - 1}.}
   \item{standardize}{Bool, if \code{TRUE}, standardize X and Y before sampling.}

@@ -1,4 +1,4 @@
-predict.bayeslm.fit = function(object, data, burnin = NULL, X = NULL...){
+predict.bayeslm.fit = function(object, data, burnin = NULL, X = NULL, ...){
     if(missing(data) && (!is.null(object$call$formula))){
         cat("You train the model with a formula.")
         cat("New data frame is missing, you need to provide one. \n")
