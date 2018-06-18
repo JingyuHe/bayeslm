@@ -75,7 +75,7 @@ prob_vec = NULL, cc = NULL, ...)
 
 
 \examples{
-\dontrun{
+
 p = 20
 n = 100
 
@@ -99,11 +99,11 @@ fitOLS = lm(y~x-1)
 # call the function using formulas
 fita = bayeslm(y ~ x, prior = 'horseshoe', 
         block_vec = block_vec, N = 10000, burnin = 2000)
-
 # summary the results
 summary(fita)
 summary(fita$beta)
 
+\donttest{
 # put the first two coefficients in one elliptical sampling block
 block_vec2 = c(2, rep(1, p-2))
 fitb = bayeslm(y ~ x, data = data, prior = 'horseshoe', 

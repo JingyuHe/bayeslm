@@ -33,7 +33,10 @@ This function is modified from package \code{bayesm} by Peter Rossi. It plots su
 \seealso{ \code{\link{summary.bayeslm.fit}}}
 
 \examples{
-\dontrun{fit=bayeslm(y~x, data = data); plot(fit$beta)}
+x = matrix(rnorm(1000), 100, 10)
+y = x \%*\% rnorm(10) + rnorm(100)
+fit=bayeslm(y~x)
+plot(fit$beta)
 }
 
 \keyword{summary}

@@ -31,7 +31,10 @@ The function also returns significance level, defined by whether the symmetric p
 \seealso{ \code{\link{summary.bayeslm.fit}}}
 
 \examples{
-\dontrun{fit=bayeslm(y~x, data = data); summary(fit$beta)}
+x = matrix(rnorm(1000), 100, 10)
+y = x \%*\% rnorm(10) + rnorm(100)
+fit=bayeslm(y~x)
+summary(fit$beta)
 }
 
 \keyword{sumamry}

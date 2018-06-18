@@ -3,10 +3,10 @@ Type: Package
 Title: Efficient Sampling for Gaussian Linear Regression with Arbitrary
         Priors
 Version: 0.8.0
-Date: 2018-6-10
+Date: 2018-6-17
 Author: P. Richard Hahn, Jingyu He, Hedibert Lopes
 Maintainer: Jingyu He <jingyu.he@chicagobooth.edu>
-Description: Efficient sampling for Gaussian linear regression with arbitrary priors.
+Description: Efficient sampling for Gaussian linear regression with arbitrary priors, Hahn, He and Hedibert (2018) <arXiv:1806.05738>.
 License: LGPL (>= 2)
 Imports: Rcpp (>= 0.12.7), stats, graphics, grDevices, coda,
         RcppParallel

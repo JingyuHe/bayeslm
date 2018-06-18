@@ -26,9 +26,8 @@ Make prediction on new data set, users are allowed to adjust number of burn-in s
 \author{Jingyu He}
 
 \examples{
-\dontrun{
 x = matrix(rnorm(1000), 100, 10)
-y = x %*% rnorm(10) + rnorm(100)
+y = x \%*\% rnorm(10) + rnorm(100)
 data = list(x = x, y = y)
 
 # Train the model with formula input
@@ -39,6 +38,5 @@ pred1 = predict(fit1, data)
 # Train the model with matrices input
 fit2 = bayeslm(Y = y, X = x)
 pred2 = predict(fit2, X = x)
-}
 }
 \keyword{univar}

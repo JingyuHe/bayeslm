@@ -34,7 +34,10 @@ This function implements standard Gibbs sampler of horseshoe regression. The pri
 \seealso{ \code{\link{summary.mcmc}}}
 
 \examples{
-\dontrun{fit=hs_gibbs(Y, X, 1000, 1, 1, TRUE); summary(fit)}
+x = matrix(rnorm(1000), 100, 10)
+y = x \%*\% rnorm(10) + rnorm(100)
+fit=hs_gibbs(y, x, 1000, 1, 1, TRUE)
+summary(fit)
 }
 
 \keyword{univar}
