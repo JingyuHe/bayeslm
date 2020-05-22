@@ -329,7 +329,24 @@ double log_laplace_prior(arma::mat beta, double tau, double sigma, double vgloba
 }
 
 
+double log_inverselaplace_prior(arma::mat beta, double lambda, double sigma, double vglobal, arma::uvec penalize){
+    arma::uvec penalize_index = find(penalize > 0);
+    beta = beta.rows(penalize_index);
+    double p = (double) beta.n_elem;
+    // beta = beta / vglobal;
+    
+    double out = 0.0;
 
+    double temp = log(lambda / 2.0);
+
+    for(size_t i = 0; i < p; i ++ ){
+        if(beta(i, 0) != 0.0){
+            out = out + temp  - 2 * log(abs(beta(i, 0))) - lambda / abs(beta(i, 0));
+        }
+    }
+
+    return out;
+}
 
 
 

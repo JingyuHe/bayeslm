@@ -1,4 +1,4 @@
-useDynLib(bayeslm)
+useDynLib(bayeslm, .registration=TRUE)
 # exportPattern("^[[:alpha:]]+")
 importFrom(Rcpp, evalCpp)
 importFrom(RcppParallel, RcppParallelLibs)

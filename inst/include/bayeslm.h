@@ -34,6 +34,7 @@ double log_cauchy_density(double x);
 double log_nonlocal_prior(arma::mat beta, double vglobal, double sigma, arma::uvec penalize, arma::vec prob, bool scale_sigma_prior);
 double log_ridge_prior(arma::mat beta, double lambda, double vglobal, double sigma, arma::uvec penalize, bool scale_sigma_prior);
 double log_laplace_prior(arma::mat beta, double tau, double sigma, double vglobal, arma::uvec penalize);
+double log_inverselaplace_prior(arma::mat beta, double lambda, double sigma, double vglobal, arma::uvec penalize);
 double log_asymmetric_prior(arma::mat beta, double vglobal, double sigma, arma::vec prob, arma::uvec penalize, bool scale_sigma_prior);
 arma::mat sampling_beta(arma::mat mu_n, arma::mat chol_Lambda_n_inv, double sigma, int p, bool scale_sigma_prior);
 double sampling_sigma(double a_n, double b_0, arma::mat YY, arma::mat mu_n, arma::mat Lambda_n);
@@ -43,5 +44,9 @@ double sampling_tau(arma::mat lambda, arma::mat beta, double sigma, double tau, 
 arma::mat sampling_beta_2(arma::mat old_beta, arma::mat mu_n, double sigma, int p, bool scale_sigma_prior, arma::mat lambda, double tau, arma::mat X, arma::mat Y);
 
 //
+
+#ifdef FALSE
+   #undef FALSE
+#endif
 
 #endif

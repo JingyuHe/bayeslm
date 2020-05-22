@@ -2,21 +2,19 @@
 /*
 
 
-blocked elliptical slice sampler, horseshoe prior
+blocked elliptical slice sampler, inverseLaplace prior
+https://arxiv.org/abs/2001.08327
 
 
 */
 
-#include <chrono>
-
 // [[Rcpp::export]]
-List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, arma::vec cc, int prior_type = 1, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1.0, double vglobal = 1.0, bool sampling_vglobal = true, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, bool scale_sigma_prior = true){
+List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec penalize, arma::vec block_vec, arma::vec cc, int prior_type = 1, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1.0, bool sampling_vglobal = true, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, bool scale_sigma_prior = true){
 
     auto t0 = std::chrono::high_resolution_clock::now();
 
     arma::vec beta_hat;
     arma::vec beta;
-    
 
     // dimensions
     int n = X.n_rows;
@@ -63,6 +61,7 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
     arma::mat YX = trans(Y) * X;
     arma::mat XX = trans(X) * X;
     arma::uvec penalize_index = find(penalize > 0);
+
 
     /*
     the input of penalize is (0,1,1,0,1...)
@@ -131,11 +130,7 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
     /*
         pre-loop computation for conditional mean and covariance matrix given other blocks
     */
-    // arma::field<arma::mat> output = conditional_factors(Sigma, block_vec);
-
-    // parallel versions
     arma::field<arma::mat> output = conditional_factors_parallel(Sigma, block_vec);
-
     arma::field<arma::mat> mean_factors = output.rows(0, N_blocks-1);
     arma::field<arma::mat> chol_factors = output.rows(N_blocks, 2 * N_blocks - 1);
 
@@ -158,6 +153,11 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
 
     
     arma::vec beta_hat_lastround = beta_hat;
+
+    // double tau = 1.0;
+    // double tau_prop = 0.0;
+    // arma::vec tausamps(nsamps);
+    // tausamps.fill(0.0);
 
     auto t1 = std::chrono::high_resolution_clock::now();
     auto time_fixed = 1.e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
@@ -187,7 +187,7 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
             nu = s * nu;
 
             // acceptance threshold
-            priorcomp = log_horseshoe_approx_prior(b.rows(block_indexes(i), block_indexes(i+1)-1) , vglobal, s, penalize.rows(block_indexes(i), block_indexes(i+1)-1), scale_sigma_prior)- log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i+1)-1), arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s, 2), singular);
+            priorcomp = log_inverselaplace_prior(b.rows(block_indexes(i), block_indexes(i+1)-1) , lambda, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i+1)-1)) - log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i+1)-1), arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s, 2), singular);
 
             u = arma::as_scalar(randu(1));
 
@@ -203,14 +203,14 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
             thetamin = thetaprop - 2.0 * M_PI;
 
             thetamax = thetaprop;
-            
+
             if(i == 0 && icept == true){
 
                 b.subvec(block_indexes(i), block_indexes(i+1) - 1) = betaprop + beta_hat_block;
 
             }else{
-                while (log_horseshoe_approx_prior(beta_hat_block + betaprop, vglobal, s, penalize.rows(block_indexes(i), block_indexes(i+1)-1), scale_sigma_prior) - log_normal_density_matrix(beta_hat_block + betaprop, arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s,2), singular) < ly){
-                    
+                while (log_inverselaplace_prior(beta_hat_block + betaprop, lambda, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i+1)-1)) - log_normal_density_matrix(beta_hat_block + betaprop, arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s,2), singular) < ly){
+
                     loopcount += 1;
 
                     if (thetaprop < 0){
@@ -233,21 +233,29 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
             }
         }
 
+        // update tau
+        // tau_prop = exp(log(tau) + arma::as_scalar(randn(1)) * 0.05 );
 
-        if(sampling_vglobal){
-            // update the global shrinkage parameter
-            vgprop = exp(log(vglobal) + arma::as_scalar(randn(1)) * 0.2);
-            // if there is no intercept, pass the full vector
-            ratio = exp(log_horseshoe_approx_prior(b, vgprop, s, penalize, scale_sigma_prior) - log_horseshoe_approx_prior(b, vglobal, s, penalize, scale_sigma_prior) + log(vgprop) - log(vglobal));
+        // ratio = exp(log_inverselaplace_prior(b, tau_prop, s, vglobal, penalize) + log_normal_density(tau_prop, 0.0, 100.0)  - log_inverselaplace_prior(b, tau, s, vglobal, penalize) - log_normal_density(tau, 0.0, 100.0)  +log(tau_prop) - log(tau));
 
-
-            if(as_scalar(randu(1)) < ratio){
-                vglobal = vgprop;
-            }
-        }
-
+        // if(as_scalar(randu(1)) < ratio){
+        //     tau = tau_prop;
+        // }
         
-        
+        // if(sampling_vglobal){
+        //     // update the global shrinkage parameter
+        //     vgprop = exp(log(vglobal) + arma::as_scalar(randn(1)) * 0.2);
+        //     // if there is no intercept, pass the full vector
+        //     ratio = exp(log_horseshoe_approx_prior(b, vgprop, s, penalize, scale_sigma_prior) - log_horseshoe_approx_prior(b, vglobal, s, penalize, scale_sigma_prior) + log(vgprop) - log(vglobal));
+
+
+        //     if(as_scalar(randu(1)) < ratio){
+        //         vglobal = vgprop;
+        //     }
+        // }
+
+
+
         // update sigma
         if(scale_sigma_prior == false){
             ssq = as_scalar(YY) - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b));
@@ -259,13 +267,16 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
 
         iter = iter + 1;
 
+
         if (iter > burn)
         {
             if (iter % skip == 0)
             {
+                // tausamps(h) = tau;
                 bsamps.col(h) = b;
                 ssamps(h) = s;
                 vsamps(h) = vglobal;
+                // ssq_out(h) = ssq;
                 loops(h) = loopcount;
                 h = h + 1;
             }
