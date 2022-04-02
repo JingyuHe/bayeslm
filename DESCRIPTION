@@ -2,11 +2,11 @@ Package: bayeslm
 Type: Package
 Title: Efficient Sampling for Gaussian Linear Regression with Arbitrary
         Priors
-Version: 0.9.0
-Date: 2020-5-22
+Version: 1.0.0
+Date: 2022-4-2
 Author: P. Richard Hahn, Jingyu He, Hedibert Lopes
-Maintainer: Jingyu He <jingyu.he@chicagobooth.edu>
-Description: Efficient sampling for Gaussian linear regression with arbitrary priors, Hahn, He and Hedibert (2018) <arXiv:1806.05738>.
+Maintainer: Jingyu He <jingyuhe@cityu.edu.hk>
+Description: Efficient sampling for Gaussian linear regression with arbitrary priors, Hahn, He and Lopes (2018) <arXiv:1806.05738>.
 License: LGPL (>= 2)
 Imports: Rcpp (>= 0.12.7), stats, graphics, grDevices, coda,
         RcppParallel

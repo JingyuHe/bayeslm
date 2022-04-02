@@ -12,14 +12,14 @@
 block_vec = NULL, sigma = NULL, s2 = 1, kap2 = 1, N = 20000L, burnin = 0L, 
 thinning = 1L, vglobal = 1, sampling_vglobal = TRUE, verb = FALSE, icept = TRUE, 
 standardize = TRUE, singular = FALSE, scale_sigma_prior = TRUE, prior_mean = NULL, 
-prob_vec = NULL, cc = NULL, ...)
+prob_vec = NULL, cc = NULL, lambda = NULL, ...)
 
 \method{bayeslm}{formula}(formula, data = list(), Y = FALSE, X = FALSE, 
 prior = "horseshoe", penalize = NULL, block_vec = NULL, sigma = NULL, 
 s2 = 1, kap2 = 1, N = 20000L, burnin = 0L, thinning = 1L, vglobal = 1, 
 sampling_vglobal = TRUE, verb = FALSE, standardize = TRUE, singular = FALSE, 
 scale_sigma_prior = TRUE, prior_mean = NULL, 
-prob_vec = NULL, cc = NULL, ...)
+prob_vec = NULL, cc = NULL, lambda = NULL, ...)
 }
 
 
@@ -50,6 +50,7 @@ prob_vec = NULL, cc = NULL, ...)
   \item{prior_mean}{\code{vector}, specify prior mean of nonlocal prior for each regressor. It should have length \code{p} (no intercept) or \code{p + 1} (intercept). The default value is 1.5 for all regressors.}
   \item{prob_vec}{\code{vector}, specify prior mean of sharkfin prior for each regressor. It should have length \code{p} (no intercept) or \code{p + 1} (intercept). The default value is 0.25 for all regressors.}
   \item{cc}{Only works when \code{singular == TRUE}, precision parameter of ridge adjustment. It should be a vector with length $p$. If it is \code{NULL}, it will be set as \code{rep(10, p)}.}
+  \item{lambda}{The shrinkage parameter for Laplace prior only.}
   \item{...}{optional parameters to be passed to the low level function \code{bayeslm.default}.}
 }
 \details{

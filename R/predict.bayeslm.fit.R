@@ -13,7 +13,7 @@ predict.bayeslm.fit = function(object, data, burnin = NULL, X = NULL, ...){
     # check input type
     if(class(object)!="bayeslm.fit"){
         cat("wrong input object, should be output of bayeslm.")
-        return
+        return()
     }
     # compute posterior mean
     N = dim(object$beta)[1] # number of posterior draws

@@ -10,7 +10,7 @@ Efficient sampling for Gaussian linear regression with arbitrary priors
 \author{
 P. Richard Hahn, Jingyu He and Hedibert Lopes
 
-Maintainer: Jingyu He \email{jingyu.he@chicagobooth.edu}
+Maintainer: Jingyu He \email{jingyuhe@cityu.edu.hk}
 }
 \references{
 Hahn, P. Richard, Jingyu He, and Hedibert Lopes. \emph{Efficient sampling for Gaussian linear regression with arbitrary priors} (2017).
