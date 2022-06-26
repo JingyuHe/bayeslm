@@ -3,7 +3,7 @@
 .RData
 .Ruserdata
 .DS_Store
-
+*.Rproj
 
 # Prerequisites
 *.d
@@ -38,3 +38,4 @@
 *.out
 *.app
 
+inst/doc

@@ -1,0 +1,143 @@
+---
+title: "Demo of the bayeslm package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Demo of the bayeslm package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+In this vignette, we show how to use `bayeslm` to sample coefficients for a 
+Gaussian linear regression with a number of different prior distributions.
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(bayeslm)
+```
+
+# Generate data
+
+```{r data_generate}
+set.seed(200)
+p = 20
+n = 100
+kappa = 1.25
+beta_true = c(c(1,2,3),rnorm(p-3,0,0.01))
+sig_true = kappa*sqrt(sum(beta_true^2))
+x = matrix(rnorm(p*n),n,p)
+y = x %*% beta_true + sig_true * rnorm(n)
+x = as.matrix(x)
+y = as.matrix(y)
+data = data.frame(x = x, y = y)
+```
+
+## Modeling $Y \mid X = x$ using linear regression
+
+### OLS
+
+First, we run OLS and inspect the estimated coefficients
+
+```{r ols}
+fitOLS = lm(y~x-1)
+coef(fitOLS)
+```
+
+### `bayeslm`
+
+#### Updating coefficients individually
+
+The bayeslm sampler can group coefficients into blocks and sample several 
+coefficients at once. Below, we simply place every coefficient into its 
+own block.
+
+```{r model_setup}
+block_vec = rep(1, p)
+```
+
+Now, we run `bayeslm` on six different priors and store their estimated coefficients
+
+```{r prior_comparison, results = 'hide', warning=F, error=F}
+# Horseshoe prior
+fit1 = bayeslm(y, x, prior = 'horseshoe', icept = FALSE, 
+               block_vec = block_vec, N = 10000, burnin=2000)
+beta_est1 = colMeans(fit1$beta)
+
+# Laplace prior
+fit2 = bayeslm(y, x, prior = 'laplace', icept = FALSE, 
+               block_vec = block_vec, N = 10000, burnin=2000)
+beta_est2 = colMeans(fit2$beta)
+
+# Ridge prior
+fit3 = bayeslm(y, x, prior = 'ridge', icept = FALSE, 
+               block_vec = block_vec, N = 10000, burnin=2000)
+beta_est3 = colMeans(fit3$beta)
+
+# "Sharkfin" prior
+fit4 = bayeslm(y, x, prior = 'sharkfin', icept = FALSE, 
+               block_vec = block_vec, N = 10000, burnin=2000)
+beta_est4 = colMeans(fit4$beta)
+
+# "Non-local" prior
+fit5 = bayeslm(y, x, prior = 'nonlocal', icept = FALSE, 
+               block_vec = block_vec, N = 10000, burnin=2000)
+beta_est5 = colMeans(fit5$beta)
+
+# Inverse laplace prior
+fit6 = bayeslm(y, x, prior = 'inverselaplace', lambda = 0.01, icept = FALSE, 
+               block_vec = block_vec, N = 10000, burnin=2000)
+beta_est6 = colMeans(fit6$beta)
+```
+
+And we plot the posterior distribution of the regression coefficients, along 
+with the OLS estimates, against the true simulated coefficients.
+
+```{r comparison_plot, fig.height=5, fig.width=7}
+plot(NULL,xlim=range(beta_true),ylim=range(beta_true), 
+     xlab = "beta true", ylab = "estimation", )
+points(beta_true,beta_est1,pch=20)
+points(beta_true,fitOLS$coef,col='red')
+points(beta_true,beta_est2,pch=20,col='cyan')
+points(beta_true,beta_est3,pch=20,col='orange')
+points(beta_true,beta_est4,pch=20,col='pink')
+points(beta_true,beta_est5,pch=20,col='lightgreen')
+points(beta_true,beta_est6,pch=20,col='grey')
+legend("topleft", c("OLS", "horseshoe", "laplace", "ridge", "sharkfin", 
+  "nonlocal", "inverselaplace"), col = c("red", "black", "cyan", "orange", 
+    "pink", "lightgreen", "grey"), pch = rep(1, 7))
+abline(0,1,col='red')
+```
+
+We can also compare the root mean squared error (RMSE) for each prior
+
+```{r rmse_comparison}
+rmseOLS = sqrt(sum((fitOLS$coef-beta_true)^2))
+rmse1 = sqrt(sum((beta_est1-beta_true)^2))
+rmse2 = sqrt(sum((beta_est2-beta_true)^2))
+rmse3 = sqrt(sum((beta_est3-beta_true)^2))
+rmse4 = sqrt(sum((beta_est4-beta_true)^2))
+rmse5 = sqrt(sum((beta_est5-beta_true)^2))
+rmse6 = sqrt(sum((beta_est6-beta_true)^2))
+print(cbind(ols = rmseOLS, hs = rmse1,laplace = rmse2, ridge = rmse3, 
+            sharkfin = rmse4,nonlocal = rmse5, inverselaplace = rmse6))
+```
+
+#### Updating coefficients in blocks
+
+Here, we demonstrate: 
+
+1. How to place several coefficients in the same block for the slice-within-Gibbs sampler
+2. How to use formula notation (`y ~ x`) in the `bayeslm` library
+
+```{r block_sampling}
+# Put the first two coefficients in one elliptical sampling block
+block_vec2 = c(2, rep(1, p-2))
+fitb = bayeslm(y ~ x - 1, data = data, prior = 'horseshoe', 
+               block_vec = block_vec2, N = 10000, burnin = 2000)
+summary(fitb)
+```
