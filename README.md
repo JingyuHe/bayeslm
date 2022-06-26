@@ -1,3 +1,7 @@
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/andrewherren/bayeslm/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/andrewherren/bayeslm/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
 # bayeslm
 
 ## Description
