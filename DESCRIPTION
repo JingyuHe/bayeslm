@@ -12,7 +12,7 @@ Authors@R: c(
 Maintainer: Jingyu He <jingyuhe@cityu.edu.hk>
 Description: Efficient sampling for Gaussian linear regression with arbitrary priors, Hahn, He and Lopes (2018) <arXiv:1806.05738>.
 License: LGPL (>= 2)
-Imports: Rcpp (>= 0.12.7), stats, graphics, grDevices, coda,
+Imports: Rcpp (>= 0.12.7), stats, graphics, grDevices, coda, methods, 
         RcppParallel
 SystemRequirements: GNU make
 Depends: R (>= 2.10)
