@@ -31,8 +31,6 @@ This function implements standard Gibbs sampler of horseshoe regression. The pri
 
 \author{Jingyu He}
 
-\seealso{ \code{\link{summary.mcmc}}}
-
 \examples{
 x = matrix(rnorm(1000), 100, 10)
 y = x \%*\% rnorm(10) + rnorm(100)

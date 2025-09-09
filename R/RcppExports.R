@@ -36,4 +36,3 @@ nonlocal_cpp_loop <- function(Y, X, prior_mean, penalize, block_vec, cc, prior_t
 bridge_cpp_loop <- function(Y, X, penalize, block_vec, cc, prior_type = 1L, sigma = 0.5, s2 = 4, kap2 = 16, nsamps = 10000L, burn = 1000L, skip = 1L, vglobal = 1.0, sampling_vglobal = TRUE, verb = FALSE, icept = FALSE, standardize = TRUE, singular = FALSE, scale_sigma_prior = TRUE) {
     .Call(`_bayeslm_bridge_cpp_loop`, Y, X, penalize, block_vec, cc, prior_type, sigma, s2, kap2, nsamps, burn, skip, vglobal, sampling_vglobal, verb, icept, standardize, singular, scale_sigma_prior)
 }
-

@@ -28,8 +28,6 @@ The function also returns significance level, defined by whether the symmetric p
 
 \author{Peter Rossi, Anderson School, UCLA, \email{perossichi@gmail.com}.}
 
-\seealso{ \code{\link{summary.bayeslm.fit}}}
-
 \examples{
 x = matrix(rnorm(1000), 100, 10)
 y = x \%*\% rnorm(10) + rnorm(100)

@@ -15,7 +15,7 @@
   \item{object    }{ \code{object} is output of \code{bayeslm} function.}
   \item{data      }{ A data frame or list of new data to predict.}
   \item{burnin    }{ number of draws to burn-in (default value is \eqn{0.1*nrow(X)}).}
-  \item{X         }{ If call \code{bayeslm} with matrices input \code{x} and {y} but not formula, pass new matrix to predict here. See example for details.}
+  \item{X         }{ If call \code{bayeslm} with matrices input \code{x} and \code{y} but not formula, pass new matrix to predict here. See example for details.}
   \item{...       }{ optional arguments for generic function.}
 }
 

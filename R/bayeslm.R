@@ -1,3 +1,3 @@
-"bayeslm" <- function(Y, ...){
+"bayeslm" <- function(Y, ...) {
     UseMethod("bayeslm")
 }

@@ -28,8 +28,6 @@ The function also returns significance level, defined by whether the symmetric p
 
 \author{Jingyu He}
 
-\seealso{ \code{\link{summary.mcmc}}}
-
 \examples{
 x = matrix(rnorm(1000), 100, 10)
 y = x \%*\% rnorm(10) + rnorm(100)

@@ -8,7 +8,8 @@ blocked elliptical slice sampler, Laplace prior
 */
 
 // [[Rcpp::export]]
-List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, arma::vec cc, int prior_type = 1, double sigma = 0.5, double s2 = 4, double kap2 = 16,  int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1.0, bool sampling_vglobal = true, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, bool scale_sigma_prior = true){
+List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec block_vec, arma::vec cc, int prior_type = 1, double sigma = 0.5, double s2 = 4, double kap2 = 16, int nsamps = 10000, int burn = 1000, int skip = 1, double vglobal = 1.0, bool sampling_vglobal = true, bool verb = false, bool icept = false, bool standardize = true, bool singular = false, bool scale_sigma_prior = true)
+{
 
     auto t0 = std::chrono::high_resolution_clock::now();
 
@@ -23,20 +24,25 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
     // compute standard derivation
     double sdy;
     arma::mat sdx = stddev(X, 0);
-    if(standardize == true){
+    if (standardize == true)
+    {
         sdy = as_scalar(stddev(Y));
-    }else{
+    }
+    else
+    {
         // if do not standardize regressors, set SD to 1
         sdy = 1.0;
         sdx.fill(1.0);
     }
-    
+
     arma::vec X_mean(X.n_cols);
-    
+
     // intercepts
-    if(icept == true){
+    if (icept == true)
+    {
         // if add a column of ones for intercept
-        if(standardize == true){
+        if (standardize == true)
+        {
             X_mean = arma::mean(X, 0).t();
             X = scaling(X);
             Y = Y / sdy;
@@ -45,22 +51,23 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
         block_vec = join_cols(ones<vec>(1), block_vec); // put intercept in the first block
         p = p + 1;
         N_blocks = N_blocks + 1;
-        sdx = join_rows(ones<mat>(1,1), sdx);
-        penalize = arma::join_cols(arma::zeros<uvec>(1), penalize); // add one indicator of penalization for intercept. Do not penalize intercept    
-    }else{
-        if(standardize == true){
+        sdx = join_rows(ones<mat>(1, 1), sdx);
+        penalize = arma::join_cols(arma::zeros<uvec>(1), penalize); // add one indicator of penalization for intercept. Do not penalize intercept
+    }
+    else
+    {
+        if (standardize == true)
+        {
             Y = scaling(Y);
             X = scaling(X);
         }
     }
 
- 
     // compute sufficient statistics
     arma::mat YY = trans(Y) * Y;
     arma::mat YX = trans(Y) * X;
     arma::mat XX = trans(X) * X;
     arma::uvec penalize_index = find(penalize > 0);
-
 
     /*
     the input of penalize is (0,1,1,0,1...)
@@ -80,26 +87,28 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
     v.fill(1.0);
     double vgprop;
 
-
     arma::mat Sigma_inv = XX;
     arma::vec eta = 1.0 / cc; // 1/c in the paper, precision of the prior
     arma::mat M0;
     arma::mat Sigma;
-    
-    if(singular == true){
+
+    if (singular == true)
+    {
         // if matrix X is singular, use the "conjugate regression" type adjustment
         M0 = arma::diagmat(eta);
         Sigma = inv(XX + M0);
         beta_hat = Sigma * (trans(YX));
-    }else{
+    }
+    else
+    {
         Sigma = inv(XX);
         beta_hat = Sigma * (trans(YX));
     }
 
     // a initial value of the derivation from the mean
     beta = 0.1 * beta_hat;
-    
-    //initialize vectors to save posterior samples
+
+    // initialize vectors to save posterior samples
     arma::mat bsamps(p, nsamps);
     bsamps.fill(0.0);
     arma::vec ssamps(nsamps);
@@ -125,12 +134,11 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
     // initial value  deviation + mean
     b = beta + beta_hat;
 
-
     /*
         pre-loop computation for conditional mean and covariance matrix given other blocks
     */
     arma::field<arma::mat> output = conditional_factors_parallel(Sigma, block_vec);
-    arma::field<arma::mat> mean_factors = output.rows(0, N_blocks-1);
+    arma::field<arma::mat> mean_factors = output.rows(0, N_blocks - 1);
     arma::field<arma::mat> chol_factors = output.rows(N_blocks, 2 * N_blocks - 1);
 
     arma::vec beta_condition;
@@ -146,11 +154,11 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
     arma::uvec block_indexes(N_blocks + 1);
     arma::vec block_cum_count = arma::cumsum(block_vec);
     block_indexes(0) = 0;
-    for(int i = 0; i < N_blocks; i ++){
-        block_indexes(i+1) = block_cum_count(i);
+    for (int i = 0; i < N_blocks; i++)
+    {
+        block_indexes(i + 1) = block_cum_count(i);
     }
 
-    
     arma::vec beta_hat_lastround = beta_hat;
 
     double tau = 1.0;
@@ -159,42 +167,44 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
     tausamps.fill(0.0);
 
     auto t1 = std::chrono::high_resolution_clock::now();
-    auto time_fixed = 1.e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
+    auto time_fixed = 1.e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
     Rcpp::Rcout << "fixed running time " << time_fixed << endl;
 
     t0 = std::chrono::high_resolution_clock::now();
     while (h < nsamps)
     {
 
-        if(verb == true && h % 1000 == 0 && h > 1 && iter % skip == 0){
+        if (verb == true && h % 1000 == 0 && h > 1 && iter % skip == 0)
+        {
             Rprintf("%d\n", h);
         }
 
         // sampling beta
         // a gibbs sampler for all blocks
-        for(int i = 0; i < N_blocks; i ++){
+        for (int i = 0; i < N_blocks; i++)
+        {
             // loop over all blocks, sample each block by ellipitical slice sampler
             // compute conditional mean
 
-            beta_condition = join_cols(b.head_rows(block_indexes(i)) - beta_hat_fixed.head_rows(block_indexes(i)), b.tail_rows(p - block_indexes(i+1)) - beta_hat_fixed.tail_rows(p - block_indexes(i+1)));
-            beta_hat_block = beta_hat_fixed.rows(block_indexes(i), block_indexes(i+1)-1) + mean_factors(i) * beta_condition;
-        
+            beta_condition = join_cols(b.head_rows(block_indexes(i)) - beta_hat_fixed.head_rows(block_indexes(i)), b.tail_rows(p - block_indexes(i + 1)) - beta_hat_fixed.tail_rows(p - block_indexes(i + 1)));
+            beta_hat_block = beta_hat_fixed.rows(block_indexes(i), block_indexes(i + 1) - 1) + mean_factors(i) * beta_condition;
+
             // define ellipse
-            //eps = rnorm((uword) block_vec(i));
+            // eps = rnorm((uword) block_vec(i));
             eps = randn<vec>(block_vec(i), 1);
             nu = chol_factors(i) * eps;
             nu = s * nu;
 
             // acceptance threshold
-            priorcomp = log_laplace_prior(b.rows(block_indexes(i), block_indexes(i+1)-1) , tau, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i+1)-1)) - log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i+1)-1), arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s, 2), singular);
+            priorcomp = log_laplace_prior(b.rows(block_indexes(i), block_indexes(i + 1) - 1), tau, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1)) - log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i + 1) - 1), arma::diagmat(eta.rows(block_indexes(i), block_indexes(i + 1) - 1)) / pow(s, 2), singular);
 
             u = arma::as_scalar(randu(1));
 
             ly = priorcomp + log(u);
 
             // subtract the new conditional mean from last draw
-            beta_block = b.rows(block_indexes(i), block_indexes(i+1) - 1) - beta_hat_block;
-            
+            beta_block = b.rows(block_indexes(i), block_indexes(i + 1) - 1) - beta_hat_block;
+
             thetaprop = arma::as_scalar(randu(1)) * 2 * M_PI;
 
             betaprop = beta_block * cos(thetaprop) + nu * sin(thetaprop);
@@ -203,69 +213,74 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
 
             thetamax = thetaprop;
 
-            if(i == 0 && icept == true){
+            if (i == 0 && icept == true)
+            {
 
-                b.subvec(block_indexes(i), block_indexes(i+1) - 1) = betaprop + beta_hat_block;
-
-            }else{
-                while (log_laplace_prior(beta_hat_block + betaprop, tau, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i+1)-1)) - log_normal_density_matrix(beta_hat_block + betaprop, arma::diagmat(eta.rows(block_indexes(i), block_indexes(i+1)-1)) / pow(s,2), singular) < ly){
+                b.subvec(block_indexes(i), block_indexes(i + 1) - 1) = betaprop + beta_hat_block;
+            }
+            else
+            {
+                while (log_laplace_prior(beta_hat_block + betaprop, tau, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1)) - log_normal_density_matrix(beta_hat_block + betaprop, arma::diagmat(eta.rows(block_indexes(i), block_indexes(i + 1) - 1)) / pow(s, 2), singular) < ly)
+                {
 
                     loopcount += 1;
 
-                    if (thetaprop < 0){
+                    if (thetaprop < 0)
+                    {
 
                         thetamin = thetaprop;
-                    
-                    }else{
-                        
+                    }
+                    else
+                    {
+
                         thetamax = thetaprop;
-                    
                     }
 
                     thetaprop = runif(1, thetamin, thetamax)[0];
 
                     betaprop = beta_block * cos(thetaprop) + nu * sin(thetaprop);
-
                 }
 
-                b.subvec(block_indexes(i), block_indexes(i+1) - 1) = betaprop + beta_hat_block;
+                b.subvec(block_indexes(i), block_indexes(i + 1) - 1) = betaprop + beta_hat_block;
             }
         }
 
         // update tau
-        tau_prop = exp(log(tau) + arma::as_scalar(randn(1)) * 0.05 );
+        tau_prop = exp(log(tau) + arma::as_scalar(randn(1)) * 0.05);
 
-        ratio = exp(log_laplace_prior(b, tau_prop, s, vglobal, penalize) + log_normal_density(tau_prop, 0.0, 100.0)  - log_laplace_prior(b, tau, s, vglobal, penalize) - log_normal_density(tau, 0.0, 100.0)  +log(tau_prop) - log(tau));
+        ratio = exp(log_laplace_prior(b, tau_prop, s, vglobal, penalize) + log_normal_density(tau_prop, 0.0, 100.0) - log_laplace_prior(b, tau, s, vglobal, penalize) - log_normal_density(tau, 0.0, 100.0) + log(tau_prop) - log(tau));
 
-        if(as_scalar(randu(1)) < ratio){
+        if (as_scalar(randu(1)) < ratio)
+        {
             tau = tau_prop;
         }
-        
-        if(sampling_vglobal){
+
+        if (sampling_vglobal)
+        {
             // update the global shrinkage parameter
             vgprop = exp(log(vglobal) + arma::as_scalar(randn(1)) * 0.2);
             // if there is no intercept, pass the full vector
             ratio = exp(log_horseshoe_approx_prior(b, vgprop, s, penalize, scale_sigma_prior) - log_horseshoe_approx_prior(b, vglobal, s, penalize, scale_sigma_prior) + log(vgprop) - log(vglobal));
 
-
-            if(as_scalar(randu(1)) < ratio){
+            if (as_scalar(randu(1)) < ratio)
+            {
                 vglobal = vgprop;
             }
         }
 
-
-
         // update sigma
-        if(scale_sigma_prior == false){
+        if (scale_sigma_prior == false)
+        {
             ssq = as_scalar(YY) - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b));
-        }else{
+        }
+        else
+        {
             ssq = as_scalar(YY) - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b)) + as_scalar(trans(b) * b);
         }
-        
+
         s = 1.0 / sqrt(arma::as_scalar(arma::randg(1, distr_param((n + kap2) / 2.0, 2.0 / (ssq + s2)))));
 
         iter = iter + 1;
-
 
         if (iter > burn)
         {
@@ -286,27 +301,27 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
     }
 
     t1 = std::chrono::high_resolution_clock::now();
-    auto time_sampling = 1.e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
+    auto time_sampling = 1.e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
     Rcpp::Rcout << "sampling time " << time_sampling << endl;
 
     // X and Y were scaled at the beginning, rescale estimations
-    for(int ll = 0; (unsigned) ll < bsamps.n_cols; ll ++){
+    for (int ll = 0; (unsigned)ll < bsamps.n_cols; ll++)
+    {
         bsamps.col(ll) = bsamps.col(ll) / trans(sdx) * sdy;
     }
 
     // adjust intercept if standardize all X variables
-    if(icept && standardize){
-        for(size_t ll = 0; ll < bsamps.n_cols; ll ++ )
-        {   
-            bsamps(0, ll) = bsamps(0, ll) - arma::sum(bsamps.submat(1, ll, p-1, ll) % X_mean);
-        }            
+    if (icept && standardize)
+    {
+        for (size_t ll = 0; ll < bsamps.n_cols; ll++)
+        {
+            bsamps(0, ll) = bsamps(0, ll) - arma::sum(bsamps.submat(1, ll, p - 1, ll) % X_mean);
+        }
     }
 
     ssamps = ssamps * sdy;
 
-
     bsamps = trans(bsamps);
-
 
     return List::create(Named("loops") = loops, Named("sigma") = ssamps, Named("vglobal") = vsamps, Named("beta") = bsamps, Named("tau") = tausamps);
 }
