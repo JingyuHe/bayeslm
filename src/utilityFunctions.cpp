@@ -52,6 +52,22 @@ double log_normal_density_scalar_2(double x, double sig_diag, double log_det_sig
 namespace
 {
 
+int capped_parallel_threads()
+{
+    // CRAN policy requires packages to never use more than two threads on the
+    // check farm. Respect a user request for 1 thread, but cap anything larger.
+    const char *threads_env = std::getenv("RCPP_PARALLEL_NUM_THREADS");
+    if (threads_env != nullptr)
+    {
+        const int requested = std::atoi(threads_env);
+        if (requested > 0)
+        {
+            return std::min(requested, 2);
+        }
+    }
+    return 2;
+}
+
 arma::vec select_penalized_beta(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
 {
     if (all_penalized)
@@ -197,7 +213,7 @@ arma::field<arma::mat> conditional_factors_parallel(const arma::mat &X, const ar
     arma::uvec block_size_vec = conv_to<arma::uvec>::from(V_cumsum);
     arma::field<arma::mat> output(n_blocks * 2);
     block_factor block_factor(X, V, block_size_vec, output);
-    parallelFor(0, n_blocks, block_factor);
+    parallelFor(0, n_blocks, block_factor, 1, capped_parallel_threads());
 
     return output;
 }
