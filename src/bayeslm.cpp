@@ -213,6 +213,8 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
 
             if (scalar_block)
             {
+                // Same scalar specialization as horseshoe.cpp for the common
+                // one-coefficient block case.
                 const double beta_hat_scalar = beta_hat_fixed(block_start) + scalar_conditional_mean(mean_factors(i), b, beta_hat_fixed, block_start);
                 const double current_beta = b(block_start);
                 eps = randn<vec>(block_vec(i), 1);
@@ -264,6 +266,7 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
                 continue;
             }
 
+            // Grouped blocks still use the original vector-valued update.
             beta_condition = join_cols(b.head_rows(block_start) - beta_hat_fixed.head_rows(block_start), b.tail_rows(p - block_indexes(i + 1)) - beta_hat_fixed.tail_rows(p - block_indexes(i + 1)));
             beta_hat_block = beta_hat_fixed.rows(block_start, block_end) + mean_factors(i) * beta_condition;
 

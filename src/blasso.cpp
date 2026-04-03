@@ -221,6 +221,7 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
 
             if (scalar_block)
             {
+                // Scalar branch for the common one-coefficient block case.
                 const double beta_hat_scalar = beta_hat_fixed(block_start) + scalar_conditional_mean(mean_factors(i), b, beta_hat_fixed, block_start);
                 const double current_beta = b(block_start);
                 eps = randn<vec>(block_vec(i), 1);
@@ -274,10 +275,13 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
                     b(block_start) = betaprop_scalar + beta_hat_scalar;
                 }
 
+                // Keep the Laplace sufficient statistic current so tau updates
+                // do not rescan the whole beta vector every iteration.
                 penalized_beta_abs_sum += (penalized_scalar ? std::abs(b(block_start)) : 0.0) - block_abs_sum_current;
                 continue;
             }
 
+            // Grouped blocks still use the original vector-valued update.
             beta_condition = join_cols(b.head_rows(block_start) - beta_hat_fixed.head_rows(block_start), b.tail_rows(p - block_indexes(i + 1)) - beta_hat_fixed.tail_rows(p - block_indexes(i + 1)));
             beta_hat_block = beta_hat_fixed.rows(block_start, block_end) + mean_factors(i) * beta_condition;
 
@@ -349,7 +353,8 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
             penalized_beta_abs_sum += penalized_abs_sum(b.rows(block_start, block_end), penalize_index_block, all_penalized_block) - block_abs_sum_current;
         }
 
-        // update tau
+        // tau only depends on the penalized absolute sum, so the cached
+        // statistic above makes this Metropolis update O(1).
         tau_prop = exp(log(tau) + arma::as_scalar(randn(1)) * 0.05);
 
         ratio = exp(log_laplace_prior_from_stats(penalized_beta_abs_sum, penalized_count, tau_prop, s, vglobal) + log_normal_density(tau_prop, 0.0, 100.0) - log_laplace_prior_from_stats(penalized_beta_abs_sum, penalized_count, tau, s, vglobal) - log_normal_density(tau, 0.0, 100.0) + log(tau_prop) - log(tau));

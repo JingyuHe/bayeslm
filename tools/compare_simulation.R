@@ -194,6 +194,9 @@ run_driver <- function(opts) {
   bench_file <- tempfile(fileext = ".rds")
   cand_file <- tempfile(fileext = ".rds")
 
+  # Load the two package builds in separate R processes so each run gets a
+  # clean namespace. Reusing one process can silently compare the same loaded
+  # DLL twice, which is especially misleading for exact MCMC regression tests.
   common_args <- c(
     paste0("--mode=child"),
     paste0("--n=", n),

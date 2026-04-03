@@ -40,6 +40,8 @@ double log_normal_density_matrix_2(const arma::mat &x, const arma::vec &sig_diag
 
 double log_normal_density_scalar_2(double x, double sig_diag, double log_det_sig_diag, bool singular)
 {
+    // Scalar analogue of log_normal_density_matrix_2(), used by the
+    // one-coefficient ESS fast path under singular designs.
     if (singular == true)
     {
         return -0.5 * sig_diag * x * x + 0.5 * log_det_sig_diag;
@@ -110,6 +112,9 @@ void compute_precision_block_factors(const arma::mat &Q, arma::uword block_start
     const arma::uword block_size = block_end - block_start + 1;
     const arma::uword p = Q.n_cols;
 
+    // Work directly from the full precision matrix Q. This avoids first
+    // materializing Sigma = Q^{-1} and then applying a Schur complement for
+    // every block, which was the main fixed-cost bottleneck.
     if (block_size == 1)
     {
         const double q11 = Q(block_start, block_start);
@@ -139,6 +144,8 @@ void compute_precision_block_factors(const arma::mat &Q, arma::uword block_start
     arma::mat Q12 = extract_off_block(Q, block_start, block_end);
     arma::mat L = chol(Q11, "lower");
 
+    // Q11^{-1/2} is the conditional covariance factor, and -Q11^{-1} Q12
+    // maps the off-block deviation into the conditional mean.
     chol_factor.eye(block_size, block_size);
     chol_factor = solve(trimatl(L), chol_factor);
 
@@ -182,6 +189,8 @@ struct block_factor : public Worker
 
 arma::field<arma::mat> conditional_factors_parallel(const arma::mat &X, const arma::vec &V)
 {
+    // Layout convention: the first n_blocks fields store conditional-mean
+    // factors, and the next n_blocks fields store covariance Cholesky factors.
     int n_blocks = V.n_elem;
     arma::vec V_cumsum = arma::cumsum(V);
     V_cumsum = V_cumsum - V(0);
@@ -355,6 +364,8 @@ arma::field<arma::mat> conditional_factors(const arma::mat &X, const arma::vec &
 
 double scalar_conditional_mean(const arma::mat &mean_factor, const arma::vec &b, const arma::mat &beta_hat_fixed, arma::uword block_start)
 {
+    // mean_factor omits the current block, so we multiply it against the
+    // concatenated left and right deviations from the unconditional mean.
     double output = 0.0;
     if (block_start > 0)
     {
