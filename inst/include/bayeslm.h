@@ -32,6 +32,7 @@ double log_normal_prior(const arma::mat &beta, const arma::vec &v);
 double user_prior_function_wrapper(const arma::mat &beta, const arma::vec &v, Rcpp::Function f);
 arma::field<arma::mat> conditional_factors(const arma::mat &X, const arma::vec &V);
 arma::field<arma::mat> conditional_factors_parallel(const arma::mat &X, const arma::vec &V);
+double scalar_conditional_mean(const arma::mat &mean_factor, const arma::vec &beta_dev, arma::uword block_start);
 double log_normal_density(double x, double mu, double sigma);
 double log_cauchy_density(double x);
 double log_nonlocal_prior(const arma::mat &beta, double vglobal, double sigma, const arma::uvec &penalize, const arma::vec &prob, bool scale_sigma_prior);

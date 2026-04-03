@@ -208,27 +208,44 @@ List bridge_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
             const arma::uword block_start = block_indexes(i);
             const arma::uword block_end = block_indexes(i + 1) - 1;
             const arma::uword block_tail_size = block_tail_sizes(i);
+            const bool scalar_block = (block_start == block_end);
             const bool skip_acceptance = (i == 0 && icept == true);
             const arma::uvec &penalize_index_block = penalize_index_blocks(i);
             const bool all_penalized_block = penalize_all_blocks(i);
             const arma::mat b_block_current = b.rows(block_start, block_end);
 
-            beta_condition.set_size(block_start + block_tail_size);
-            if (block_start > 0)
+            if (scalar_block)
             {
-                beta_condition.head_rows(block_start) = beta_dev.head_rows(block_start);
+                beta_hat_block.set_size(1, 1);
+                beta_hat_block(0, 0) = beta_hat_fixed_blocks(i)(0, 0) + scalar_conditional_mean(mean_factors(i), beta_dev, block_start);
             }
-            if (block_tail_size > 0)
+            else
             {
-                beta_condition.tail_rows(block_tail_size) = beta_dev.tail_rows(block_tail_size);
+                beta_condition.set_size(block_start + block_tail_size);
+                if (block_start > 0)
+                {
+                    beta_condition.head_rows(block_start) = beta_dev.head_rows(block_start);
+                }
+                if (block_tail_size > 0)
+                {
+                    beta_condition.tail_rows(block_tail_size) = beta_dev.tail_rows(block_tail_size);
+                }
+                beta_hat_block = beta_hat_fixed_blocks(i) + mean_factors(i) * beta_condition;
             }
-            beta_hat_block = beta_hat_fixed_blocks(i) + mean_factors(i) * beta_condition;
 
             // define ellipse
             // eps = rnorm((uword) block_vec(i));
             eps = randn<vec>(block_vec(i), 1);
-            nu = chol_factors(i) * eps;
-            nu = s * nu;
+            if (scalar_block)
+            {
+                nu.set_size(1, 1);
+                nu(0, 0) = s * chol_factors(i)(0, 0) * eps(0);
+            }
+            else
+            {
+                nu = chol_factors(i) * eps;
+                nu = s * nu;
+            }
             arma::vec Sigma_block_inv_diag;
             double Sigma_block_log_det = 0.0;
             if (singular == true && !skip_acceptance)
@@ -255,7 +272,15 @@ List bridge_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
             }
 
             // subtract the new conditional mean from last draw
-            beta_block = b_block_current - beta_hat_block;
+            if (scalar_block)
+            {
+                beta_block.set_size(1, 1);
+                beta_block(0, 0) = b_block_current(0, 0) - beta_hat_block(0, 0);
+            }
+            else
+            {
+                beta_block = b_block_current - beta_hat_block;
+            }
 
             thetaprop = arma::as_scalar(randu(1)) * 2 * M_PI;
 
@@ -268,9 +293,16 @@ List bridge_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
 
             if (i == 0 && icept == true)
             {
-
-                b.subvec(block_start, block_end) = proposed_beta;
-                beta_dev.subvec(block_start, block_end) = arma::vectorise(proposed_beta - beta_hat_fixed_blocks(i));
+                if (scalar_block)
+                {
+                    b(block_start) = proposed_beta(0, 0);
+                    beta_dev(block_start) = proposed_beta(0, 0) - beta_hat_fixed_blocks(i)(0, 0);
+                }
+                else
+                {
+                    b.subvec(block_start, block_end) = proposed_beta;
+                    beta_dev.subvec(block_start, block_end) = arma::vectorise(proposed_beta - beta_hat_fixed_blocks(i));
+                }
             }
             else
             {
@@ -305,8 +337,16 @@ List bridge_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
                     proposed_beta = beta_hat_block + betaprop;
                 }
 
-                b.subvec(block_start, block_end) = proposed_beta;
-                beta_dev.subvec(block_start, block_end) = arma::vectorise(proposed_beta - beta_hat_fixed_blocks(i));
+                if (scalar_block)
+                {
+                    b(block_start) = proposed_beta(0, 0);
+                    beta_dev(block_start) = proposed_beta(0, 0) - beta_hat_fixed_blocks(i)(0, 0);
+                }
+                else
+                {
+                    b.subvec(block_start, block_end) = proposed_beta;
+                    beta_dev.subvec(block_start, block_end) = arma::vectorise(proposed_beta - beta_hat_fixed_blocks(i));
+                }
             }
         }
 

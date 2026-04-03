@@ -77,6 +77,32 @@ arma::mat extract_off_block(const arma::mat &Q, arma::uword block_start, arma::u
 void compute_precision_block_factors(const arma::mat &Q, arma::uword block_start, arma::uword block_end, arma::mat &mean_factor, arma::mat &chol_factor)
 {
     const arma::uword block_size = block_end - block_start + 1;
+    const arma::uword p = Q.n_cols;
+    if (block_size == 1)
+    {
+        const double q11 = Q(block_start, block_start);
+        chol_factor.set_size(1, 1);
+        chol_factor(0, 0) = 1.0 / std::sqrt(q11);
+
+        if (p > 1)
+        {
+            mean_factor.set_size(1, p - 1);
+            if (block_start > 0)
+            {
+                mean_factor.head_cols(block_start) = -Q.submat(block_start, 0, block_start, block_start - 1) / q11;
+            }
+            if (block_end + 1 < p)
+            {
+                mean_factor.tail_cols(p - block_end - 1) = -Q.submat(block_start, block_end + 1, block_start, p - 1) / q11;
+            }
+        }
+        else
+        {
+            mean_factor.zeros(1, 0);
+        }
+        return;
+    }
+
     arma::mat Q11 = Q.submat(block_start, block_start, block_end, block_end);
     arma::mat Q12 = extract_off_block(Q, block_start, block_end);
     arma::mat L = chol(Q11, "lower");
@@ -132,6 +158,21 @@ arma::field<arma::mat> conditional_factors_parallel(const arma::mat &X, const ar
     block_factor block_factor(X, V, block_size_vec, output);
     parallelFor(0, n_blocks, block_factor);
 
+    return output;
+}
+
+double scalar_conditional_mean(const arma::mat &mean_factor, const arma::vec &beta_dev, arma::uword block_start)
+{
+    double output = 0.0;
+    if (block_start > 0)
+    {
+        output += arma::as_scalar(mean_factor.cols(0, block_start - 1) * beta_dev.head(block_start));
+    }
+    const arma::uword tail_size = beta_dev.n_elem - block_start - 1;
+    if (tail_size > 0)
+    {
+        output += arma::as_scalar(mean_factor.cols(block_start, mean_factor.n_cols - 1) * beta_dev.tail(tail_size));
+    }
     return output;
 }
 
