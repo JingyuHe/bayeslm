@@ -126,6 +126,7 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
     arma::vec beta_condition;
     arma::mat beta_hat_block;
     arma::mat beta_hat_fixed = beta_hat;
+    arma::vec beta_dev = b - beta_hat_fixed;
     arma::mat beta_block;
 
     // There are three beta related vectors
@@ -138,6 +139,22 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
     for (int i = 0; i < N_blocks; i++)
     {
         block_indexes(i + 1) = block_cum_count(i);
+    }
+    arma::field<arma::mat> beta_hat_fixed_blocks(N_blocks);
+    arma::field<arma::uvec> penalize_blocks(N_blocks);
+    arma::field<arma::vec> eta_blocks;
+    if (singular == true)
+    {
+        eta_blocks.set_size(N_blocks);
+    }
+    for (int i = 0; i < N_blocks; i++)
+    {
+        beta_hat_fixed_blocks(i) = beta_hat_fixed.rows(block_indexes(i), block_indexes(i + 1) - 1);
+        penalize_blocks(i) = penalize.rows(block_indexes(i), block_indexes(i + 1) - 1);
+        if (singular == true)
+        {
+            eta_blocks(i) = eta.rows(block_indexes(i), block_indexes(i + 1) - 1);
+        }
     }
 
     double tau = 1.0;
@@ -166,29 +183,50 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
         {
             // loop over all blocks, sample each block by ellipitical slice sampler
             // compute conditional mean
+            const arma::uword block_start = block_indexes(i);
+            const arma::uword block_end = block_indexes(i + 1) - 1;
+            const bool skip_acceptance = (i == 0 && icept == true);
+            const arma::uvec &penalize_block = penalize_blocks(i);
+            const arma::mat b_block_current = b.rows(block_start, block_end);
 
-            beta_condition = join_cols(b.head_rows(block_indexes(i)) - beta_hat_fixed.head_rows(block_indexes(i)), b.tail_rows(p - block_indexes(i + 1)) - beta_hat_fixed.tail_rows(p - block_indexes(i + 1)));
-            beta_hat_block = beta_hat_fixed.rows(block_indexes(i), block_indexes(i + 1) - 1) + mean_factors(i) * beta_condition;
+            beta_condition = join_cols(beta_dev.head_rows(block_start), beta_dev.tail_rows(p - block_indexes(i + 1)));
+            beta_hat_block = beta_hat_fixed_blocks(i) + mean_factors(i) * beta_condition;
 
             // define ellipse
             // eps = rnorm((uword) block_vec(i));
             eps = randn<vec>(block_vec(i), 1);
             nu = chol_factors(i) * eps;
             nu = s * nu;
+            arma::mat Sigma_block_inv;
+            if (singular == true && !skip_acceptance)
+            {
+                Sigma_block_inv = arma::diagmat(eta_blocks(i)) / pow(s, 2);
+            }
 
             // acceptance threshold
-            priorcomp = log_laplace_prior(b.rows(block_indexes(i), block_indexes(i + 1) - 1), tau, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1)) - log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i + 1) - 1), arma::diagmat(eta.rows(block_indexes(i), block_indexes(i + 1) - 1)) / pow(s, 2), singular);
+            if (!skip_acceptance)
+            {
+                priorcomp = log_laplace_prior(b_block_current, tau, s, vglobal, penalize_block);
+                if (singular == true)
+                {
+                    priorcomp = priorcomp - log_normal_density_matrix(b_block_current, Sigma_block_inv, singular);
+                }
+            }
 
             u = arma::as_scalar(randu(1));
 
-            ly = priorcomp + log(u);
+            if (!skip_acceptance)
+            {
+                ly = priorcomp + log(u);
+            }
 
             // subtract the new conditional mean from last draw
-            beta_block = b.rows(block_indexes(i), block_indexes(i + 1) - 1) - beta_hat_block;
+            beta_block = b_block_current - beta_hat_block;
 
             thetaprop = arma::as_scalar(randu(1)) * 2 * M_PI;
 
             betaprop = beta_block * cos(thetaprop) + nu * sin(thetaprop);
+            arma::mat proposed_beta = beta_hat_block + betaprop;
 
             thetamin = thetaprop - 2.0 * M_PI;
 
@@ -197,12 +235,22 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
             if (i == 0 && icept == true)
             {
 
-                b.subvec(block_indexes(i), block_indexes(i + 1) - 1) = betaprop + beta_hat_block;
+                b.subvec(block_start, block_end) = proposed_beta;
+                beta_dev.subvec(block_start, block_end) = arma::vectorise(proposed_beta - beta_hat_fixed_blocks(i));
             }
             else
             {
-                while (log_laplace_prior(beta_hat_block + betaprop, tau, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1)) - log_normal_density_matrix(beta_hat_block + betaprop, arma::diagmat(eta.rows(block_indexes(i), block_indexes(i + 1) - 1)) / pow(s, 2), singular) < ly)
+                while (true)
                 {
+                    priorcomp = log_laplace_prior(proposed_beta, tau, s, vglobal, penalize_block);
+                    if (singular == true)
+                    {
+                        priorcomp = priorcomp - log_normal_density_matrix(proposed_beta, Sigma_block_inv, singular);
+                    }
+                    if (priorcomp >= ly)
+                    {
+                        break;
+                    }
 
                     loopcount += 1;
 
@@ -220,9 +268,11 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
                     thetaprop = runif(1, thetamin, thetamax)[0];
 
                     betaprop = beta_block * cos(thetaprop) + nu * sin(thetaprop);
+                    proposed_beta = beta_hat_block + betaprop;
                 }
 
-                b.subvec(block_indexes(i), block_indexes(i + 1) - 1) = betaprop + beta_hat_block;
+                b.subvec(block_start, block_end) = proposed_beta;
+                beta_dev.subvec(block_start, block_end) = arma::vectorise(proposed_beta - beta_hat_fixed_blocks(i));
             }
         }
 
