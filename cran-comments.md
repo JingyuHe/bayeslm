@@ -1,66 +1,46 @@
 ## Resubmission of an archived package
 
-The `bayeslm` package was archived on 10/2/2020. The last CRAN check results are available at 
-https://cran-archive.r-project.org/web/checks/2020/2020-10-02_check_results_bayeslm.html
+This is a resubmission of `bayeslm`, which is currently archived on CRAN.
 
-To summarize, there were four check notes: 
+Since the archive, the package has been updated to address CRAN-facing issues and
+to improve the C++ implementation used by the samplers. In particular:
 
-```
-Check: R code for possible problems 
-Result: NOTE 
-    Possibly missing '()' after 'return' in the following function:
-     'predict.bayeslm.fit' 
-```
-
-```
-Check: line endings in C/C++/Fortran sources/headers 
-Result: NOTE 
-    Found the following sources/headers not terminated with a newline:
-     inst/include/bayeslm.h
-    Some compilers warn on such files. 
-```
-
-```
-Check: R code for possible problems 
-Result: NOTE 
-    Possibly missing '()' after 'return' in the following function:
-     'predict.bayeslm.fit' 
-```
-
-```
-Check: for GNU extensions in Makefiles 
-Result: NOTE 
-    GNU make is a SystemRequirements.
-```
-
-```
-Check: installed package size 
-Result: NOTE 
-     installed size is 11.2Mb
-     sub-directories of 1Mb or more:
-     libs 11.0Mb 
-```
-
-The first two of these have been corrected. The second two are addressed below.
+- the package now caps `RcppParallel` execution at no more than 2 threads,
+  matching CRAN policy for packages that use parallel computation;
+- package metadata and repository links were refreshed;
+- the package was rechecked locally with current R and external tools.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 2 notes
+I ran `R CMD check --as-cran` with:
 
-```
-* checking for GNU extensions in Makefiles ... NOTE
-  GNU make is a SystemRequirements
+- R 4.5.3 on macOS
+- `qpdf` installed
+- HTML Tidy installed
+- the `V8` package installed
+
+Result:
+
+- 0 errors
+- 0 warnings
+- 1 note
+
+The remaining note is the standard CRAN incoming note that this is a new
+submission of a package that is currently archived:
+
+```text
+* checking CRAN incoming feasibility ... NOTE
+Maintainer: 'Jingyu He <jingyuhe@cityu.edu.hk>'
+
+New submission
+
+Package was archived on CRAN
+
+CRAN repository db overrides:
+  X-CRAN-Comment: Archived on 2025-11-27 as issues were not corrected
+    despite reminders.
 ```
 
-This package uses `RcppParallel` and, as a result, we cannot avoid producing 
-this note when running `R CMD check`.
+## Additional checks
 
-```
-* checking installed package size ... NOTE
-  installed size is 20.2Mb
-  sub-directories of 1Mb or more:
-    libs  19.9Mb
-```
-
-This note only occurs on linux distributions and, to the best of our understanding, 
-is an artifact of the way that R packages are built with debug information on linux.
+I also submitted the package tarball to Win-builder for `R-devel` on Windows.
