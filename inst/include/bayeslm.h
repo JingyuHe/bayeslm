@@ -19,6 +19,7 @@ using namespace R;
 
 
 double log_normal_density_matrix(arma::mat x, arma::mat Sigma,bool singular);
+double log_normal_density_matrix_2(arma::mat x, arma::vec sig_diag, bool singular);
 double log_horseshoe_approx_prior(arma::mat beta, double v, double sigma, arma::uvec penalize, bool scale_sigma_prior);
 arma::vec sample_exp(arma::vec lambda);
 arma::mat scaling(arma::mat x);

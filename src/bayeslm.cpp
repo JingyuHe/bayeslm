@@ -67,7 +67,6 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
     arma::mat YY = trans(Y) * Y;
     arma::mat YX = trans(Y) * X;
     arma::mat XX = trans(X) * X;
-    arma::uvec penalize_index = find(penalize > 0);
 
     /*
     the input of penalize is (0,1,1,0,1...)
@@ -83,26 +82,23 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
     double thetamin;
     double thetamax;
     arma::vec b;
-    arma::vec v(p);
-    v.fill(1.0);
     double vgprop;
 
-    arma::mat Sigma_inv = XX;
     arma::vec eta = 1.0 / cc; // 1/c in the paper, precision of the prior
     arma::mat M0;
-    arma::mat Sigma;
+    arma::mat Precision;
 
     if (singular == true)
     {
         // if matrix X is singular, use the "conjugate regression" type adjustment
         M0 = arma::diagmat(eta);
-        Sigma = inv(XX + M0);
-        beta_hat = Sigma * (trans(YX));
+        Precision = XX + M0;
+        beta_hat = solve(Precision, trans(YX));
     }
     else
     {
-        Sigma = inv(XX);
-        beta_hat = Sigma * (trans(YX));
+        Precision = XX;
+        beta_hat = solve(Precision, trans(YX));
     }
 
     // a initial value of the derivation from the mean
@@ -115,8 +111,6 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
     ssamps.fill(0.0);
     arma::vec vsamps(nsamps);
     vsamps.fill(0.0);
-    arma::vec ssq_out(nsamps);
-    ssq_out.fill(0.0);
     int loopcount = 0;
     arma::vec loops(nsamps);
     loops.fill(0);
@@ -137,7 +131,7 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
     /*
         pre-loop computation for conditional mean and covariance matrix given other blocks
     */
-    arma::field<arma::mat> output = conditional_factors_parallel(Sigma, block_vec);
+    arma::field<arma::mat> output = conditional_factors_parallel(Precision, block_vec);
     arma::field<arma::mat> mean_factors = output.rows(0, N_blocks - 1);
     arma::field<arma::mat> chol_factors = output.rows(N_blocks, 2 * N_blocks - 1);
 
@@ -148,7 +142,6 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
 
     // There are three beta related vectors
     // beta_hat_fixed, uncodintional mean of betas
-    // beta_hat_lastround, conditional mean of previous round
     // beta deviace from the mean
 
     arma::uvec block_indexes(N_blocks + 1);
@@ -159,11 +152,12 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
         block_indexes(i + 1) = block_cum_count(i);
     }
 
-    arma::vec beta_hat_lastround = beta_hat;
-
     auto t1 = std::chrono::high_resolution_clock::now();
     auto time_fixed = 1.e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-    Rcpp::Rcout << "fixed running time " << time_fixed << endl;
+    if (verb == true)
+    {
+        Rcpp::Rcout << "fixed running time " << time_fixed << endl;
+    }
 
     t0 = std::chrono::high_resolution_clock::now();
     while (h < nsamps)
@@ -191,7 +185,7 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
             nu = s * nu;
 
             // acceptance threshold
-            priorcomp = log_horseshoe_approx_prior(b.rows(block_indexes(i), block_indexes(i + 1) - 1), vglobal, s, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1), scale_sigma_prior) - log_normal_density_matrix(b.rows(block_indexes(i), block_indexes(i + 1) - 1), arma::diagmat(eta.rows(block_indexes(i), block_indexes(i + 1) - 1)) / pow(s, 2), singular);
+            priorcomp = log_horseshoe_approx_prior(b.rows(block_indexes(i), block_indexes(i + 1) - 1), vglobal, s, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1), scale_sigma_prior) - log_normal_density_matrix_2(b.rows(block_indexes(i), block_indexes(i + 1) - 1), eta.rows(block_indexes(i), block_indexes(i + 1) - 1) / pow(s, 2), singular);
 
             u = arma::as_scalar(randu(1));
 
@@ -215,7 +209,7 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
             }
             else
             {
-                while (log_horseshoe_approx_prior(beta_hat_block + betaprop, vglobal, s, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1), scale_sigma_prior) - log_normal_density_matrix(beta_hat_block + betaprop, arma::diagmat(eta.rows(block_indexes(i), block_indexes(i + 1) - 1)) / pow(s, 2), singular) < ly)
+                while (log_horseshoe_approx_prior(beta_hat_block + betaprop, vglobal, s, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1), scale_sigma_prior) - log_normal_density_matrix_2(beta_hat_block + betaprop, eta.rows(block_indexes(i), block_indexes(i + 1) - 1) / pow(s, 2), singular) < ly)
                 {
 
                     loopcount += 1;
@@ -284,7 +278,10 @@ List bayeslm_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec b
 
     t1 = std::chrono::high_resolution_clock::now();
     auto time_sampling = 1.e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-    Rcpp::Rcout << "sampling time " << time_sampling << endl;
+    if (verb == true)
+    {
+        Rcpp::Rcout << "sampling time " << time_sampling << endl;
+    }
 
     // X and Y were scaled at the beginning, rescale estimations
     for (int ll = 0; (unsigned)ll < bsamps.n_cols; ll++)

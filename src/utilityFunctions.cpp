@@ -19,12 +19,14 @@ double log_normal_density_matrix(arma::mat x, arma::mat Sigma_inv, bool singular
 
 double log_normal_density_matrix_2(arma::mat x, arma::vec sig_diag, bool singular)
 {
-    // log normal density function, for diagonal covariance matrix only
-    // input : sig_diag, diagonal elements of covariance matrix
+    // log normal density function, for diagonal precision matrix only
+    // input : sig_diag, diagonal elements of precision matrix
     double output = 0.0;
-    arma::mat deviation;
     if (singular == true)
     {
+        arma::vec deviation = arma::vectorise(x);
+        output = -0.5 * arma::dot(sig_diag, arma::square(deviation));
+        output = output + 0.5 * sum(log(sig_diag));
     }
     else
     {
@@ -33,45 +35,102 @@ double log_normal_density_matrix_2(arma::mat x, arma::vec sig_diag, bool singula
     return (output);
 }
 
+namespace
+{
+
+arma::mat extract_off_block(const arma::mat &Q, arma::uword block_start, arma::uword block_end)
+{
+    const arma::uword block_size = block_end - block_start + 1;
+    const arma::uword p = Q.n_cols;
+    arma::mat Q12(block_size, p - block_size);
+
+    if (block_start > 0)
+    {
+        Q12.head_cols(block_start) = Q.submat(block_start, 0, block_end, block_start - 1);
+    }
+
+    if (block_end + 1 < p)
+    {
+        Q12.tail_cols(p - block_end - 1) = Q.submat(block_start, block_end + 1, block_end, p - 1);
+    }
+
+    return Q12;
+}
+
+void compute_precision_block_factors(const arma::mat &Q, arma::uword block_start, arma::uword block_end, arma::mat &mean_factor, arma::mat &chol_factor)
+{
+    const arma::uword block_size = block_end - block_start + 1;
+    const arma::uword p = Q.n_cols;
+
+    if (block_size == 1)
+    {
+        const double q11 = Q(block_start, block_start);
+        chol_factor.set_size(1, 1);
+        chol_factor(0, 0) = 1.0 / std::sqrt(q11);
+
+        if (p > 1)
+        {
+            mean_factor.set_size(1, p - 1);
+            if (block_start > 0)
+            {
+                mean_factor.head_cols(block_start) = -Q.submat(block_start, 0, block_start, block_start - 1) / q11;
+            }
+            if (block_end + 1 < p)
+            {
+                mean_factor.tail_cols(p - block_end - 1) = -Q.submat(block_start, block_end + 1, block_start, p - 1) / q11;
+            }
+        }
+        else
+        {
+            mean_factor.zeros(1, 0);
+        }
+        return;
+    }
+
+    arma::mat Q11 = Q.submat(block_start, block_start, block_end, block_end);
+    arma::mat Q12 = extract_off_block(Q, block_start, block_end);
+    arma::mat L = chol(Q11, "lower");
+
+    chol_factor.eye(block_size, block_size);
+    chol_factor = solve(trimatl(L), chol_factor);
+
+    if (Q12.n_cols > 0)
+    {
+        mean_factor = solve(trimatl(L), Q12);
+        mean_factor = solve(trimatu(L.t()), mean_factor);
+        mean_factor = -mean_factor;
+    }
+    else
+    {
+        mean_factor.zeros(block_size, 0);
+    }
+}
+
 struct block_factor : public Worker
 {
-    // input matrix, pass by reference
-    const arma::mat &X;
+    // input precision matrix, pass by reference
+    const arma::mat &Q;
     const arma::vec &V;
     const arma::uvec &block_size_vec;
     arma::field<arma::mat> &output;
 
     // constructor
-    block_factor(const arma::mat &X, const arma::vec &V, const arma::uvec &block_size_vec, arma::field<arma::mat> &output) : X(X), V(V), block_size_vec(block_size_vec), output(output) {}
+    block_factor(const arma::mat &Q, const arma::vec &V, const arma::uvec &block_size_vec, arma::field<arma::mat> &output) : Q(Q), V(V), block_size_vec(block_size_vec), output(output) {}
 
     // function call operator that work for specified index range
     void operator()(std::size_t begin, std::size_t end)
     {
         int n_blocks = V.n_elem;
-        arma::mat temp;
-        arma::mat temp11;
-        arma::mat temp12;
-        arma::mat temp22;
-        int block_size_cumulate = 0;
-        int block_size_cumulate_next = 0;
         for (std::size_t i = begin; i < end; i++)
         {
-            block_size_cumulate = block_size_vec(i);
-            block_size_cumulate_next = block_size_vec(i) + V(i);
-            // other subsequent blocks, subscripts begin from block_size_cumulate to block_size_cumulate + V(i)
-            temp11 = X.submat(block_size_cumulate, block_size_cumulate, block_size_cumulate_next - 1, block_size_cumulate_next - 1);
-            temp12 = X.rows(block_size_cumulate, block_size_cumulate_next - 1);
-            temp12.shed_cols(block_size_cumulate, block_size_cumulate_next - 1);
-            temp22 = X;
-            temp22.shed_rows(block_size_cumulate, block_size_cumulate_next - 1);
-            temp22.shed_cols(block_size_cumulate, block_size_cumulate_next - 1);
-            temp = solve(temp22, temp12.t()); // faster than inv(temp22) * temp21
-            output(i + n_blocks) = chol(temp11 - temp12 * temp, "lower");
-            output(i) = temp.t();
-            // block_size_cumulate += V(i);
+            const arma::uword block_start = block_size_vec(i);
+            const arma::uword block_end = block_size_vec(i) + static_cast<arma::uword>(V(i)) - 1;
+            compute_precision_block_factors(Q, block_start, block_end, output(i), output(i + n_blocks));
         }
     }
 };
+
+} // namespace
 
 arma::field<arma::mat> conditional_factors_parallel(arma::mat X, arma::vec V)
 {
@@ -204,8 +263,8 @@ double log_normal_prior(arma::mat beta, arma::vec v)
 arma::field<arma::mat> conditional_factors(arma::mat X, arma::vec V)
 {
     /*
-        This function computes cholesky factor (lower triangular) of conditional covariance for all blocks
-        Arguments: X : the full covariance
+        This function computes block conditional factors from the full precision matrix
+        Arguments: X : the full precision matrix
                    V : vector indicates blocks V(i) is number of parameters in block i
         Return value:
             an arma::field objects with length 2 * n_blocks
@@ -213,27 +272,15 @@ arma::field<arma::mat> conditional_factors(arma::mat X, arma::vec V)
             the next n_blocks objects are cholesky factors of conditional covariance
     */
     int n_blocks = V.n_elem;
+    arma::vec V_cumsum = arma::cumsum(V);
+    V_cumsum = V_cumsum - V(0);
+    arma::uvec block_size_vec = conv_to<arma::uvec>::from(V_cumsum);
     arma::field<arma::mat> output(n_blocks * 2);
-    arma::mat temp;
-    arma::mat temp11;
-    arma::mat temp12;
-    arma::mat temp22;
-    int block_size_cumulate = 0;
-    int block_size_cumulate_next = 0;
     for (int i = 0; i < n_blocks; i++)
     {
-        block_size_cumulate_next = block_size_cumulate + V(i);
-        // other subsequent blocks, subscripts begin from block_size_cumulate to block_size_cumulate + V(i)
-        temp11 = X.submat(block_size_cumulate, block_size_cumulate, block_size_cumulate_next - 1, block_size_cumulate_next - 1);
-        temp12 = X.rows(block_size_cumulate, block_size_cumulate_next - 1);
-        temp12.shed_cols(block_size_cumulate, block_size_cumulate_next - 1);
-        temp22 = X;
-        temp22.shed_rows(block_size_cumulate, block_size_cumulate_next - 1);
-        temp22.shed_cols(block_size_cumulate, block_size_cumulate_next - 1);
-        temp = solve(temp22, temp12.t()); // faster than inv(temp22) * temp21
-        output(i + n_blocks) = chol(temp11 - temp12 * temp, "lower");
-        output(i) = temp.t();
-        block_size_cumulate += V(i);
+        const arma::uword block_start = block_size_vec(i);
+        const arma::uword block_end = block_size_vec(i) + static_cast<arma::uword>(V(i)) - 1;
+        compute_precision_block_factors(X, block_start, block_end, output(i), output(i + n_blocks));
     }
 
     return output;

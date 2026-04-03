@@ -94,22 +94,22 @@ bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior 
 
 
     if (prior == "horseshoe") {
-        cat("horseshoe prior \n")
+        if (verb) cat("horseshoe prior \n")
         output <- horseshoe_cpp_loop(Y, X, penalize, block_vec, cc, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, sampling_vglobal, verb, icept, standardize, singular, scale_sigma_prior)
     } else if (prior == "laplace") {
-        cat("laplace prior \n")
+        if (verb) cat("laplace prior \n")
         output <- blasso_cpp_loop(Y, X, penalize, block_vec, cc, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, sampling_vglobal, verb, icept, standardize, singular, scale_sigma_prior)
     } else if (prior == "ridge") {
-        cat("ridge prior \n")
+        if (verb) cat("ridge prior \n")
         output <- bridge_cpp_loop(Y, X, penalize, block_vec, cc, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, sampling_vglobal, verb, icept, standardize, singular, scale_sigma_prior)
     } else if (prior == "inverselaplace") {
-        cat("inverse Laplace prior \n")
+        if (verb) cat("inverse Laplace prior \n")
         if (is.null(lambda)) {
             cat("lambda is missing for inverse Laplace prior. \n")
         }
         output <- inverseLaplace_cpp_loop(Y, X, lambda, penalize, block_vec, cc, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, sampling_vglobal, verb, icept, standardize, singular, scale_sigma_prior)
     } else if (prior == "nonlocal") {
-        cat("nonlocal prior \n")
+        if (verb) cat("nonlocal prior \n")
         if (is.null(prior_mean) == TRUE) {
             cat("prior mean of nonlocal prior is not specified, use default value 1.5 for all coefficients \n")
             if (icept == TRUE) {
@@ -120,7 +120,7 @@ bayeslm.formula <- function(formula, data = list(), Y = FALSE, X = FALSE, prior 
         }
         output <- nonlocal_cpp_loop(Y, X, prior_mean, penalize, block_vec, cc, prior_type, sigma, s2, kap2, N, burnin, thinning, vglobal, sampling_vglobal, verb, icept, standardize, singular, scale_sigma_prior)
     } else if (prior == "sharkfin") {
-        cat("sharkfin prior \n")
+        if (verb) cat("sharkfin prior \n")
         if (is.null(prob_vec) == TRUE) {
             cat("prior parameter q of nonlocal prior is not specified, use default value 0.25 for all coefficients \n")
             if (icept == TRUE) {
