@@ -93,12 +93,12 @@ List bridge_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
         // if matrix X is singular, use the "conjugate regression" type adjustment
         M0 = arma::diagmat(eta);
         Precision = XX + M0;
-        beta_hat = solve(Precision, trans(YX));
+        beta_hat = solve(Precision, trans(YX), arma::solve_opts::likely_sympd);
     }
     else
     {
         Precision = XX;
-        beta_hat = solve(Precision, trans(YX));
+        beta_hat = solve(Precision, trans(YX), arma::solve_opts::likely_sympd);
     }
 
     // a initial value of the derivation from the mean
