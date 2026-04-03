@@ -68,13 +68,6 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
     arma::mat YY = trans(Y) * Y;
     arma::mat YX = trans(Y) * X;
     arma::mat XX = trans(X) * X;
-    arma::uvec penalize_index = find(penalize > 0);
-
-    /*
-    the input of penalize is (0,1,1,0,1...)
-    convert to indeces of 1
-    */
-
     burn = burn + 1;
 
     double s = sigma;
@@ -84,11 +77,8 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
     double thetamin;
     double thetamax;
     arma::vec b;
-    arma::vec v(p);
-    v.fill(1.0);
     double vgprop;
 
-    arma::mat Sigma_inv = XX;
     arma::vec eta = 1.0 / cc; // 1/c in the paper, precision of the prior
     arma::mat M0;
     arma::mat Sigma;
@@ -111,21 +101,13 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
 
     // initialize vectors to save posterior samples
     arma::mat bsamps(p, nsamps);
-    bsamps.fill(0.0);
     arma::vec ssamps(nsamps);
-    ssamps.fill(0.0);
     arma::vec vsamps(nsamps);
-    vsamps.fill(0.0);
-    arma::vec ssq_out(nsamps);
-    ssq_out.fill(0.0);
     int loopcount = 0;
     arma::vec loops(nsamps);
-    loops.fill(0);
     double u;
     arma::mat nu;
-    nu.fill(0.0);
     arma::vec eps(p);
-    eps.fill(0.0);
     arma::vec betaprop;
     double priorcomp;
     int iter = 0;
@@ -149,7 +131,6 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
 
     // There are three beta related vectors
     // beta_hat_fixed, uncodintional mean of betas
-    // beta_hat_lastround, conditional mean of previous round
     // beta deviace from the mean
 
     arma::uvec block_indexes(N_blocks + 1);
@@ -160,8 +141,6 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
         block_indexes(i + 1) = block_cum_count(i);
     }
 
-    arma::vec beta_hat_lastround = beta_hat;
-
     // double tau = 1.0;
     // double tau_prop = 0.0;
     // arma::vec tausamps(nsamps);
@@ -169,7 +148,10 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
 
     auto t1 = std::chrono::high_resolution_clock::now();
     auto time_fixed = 1.e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-    Rcpp::Rcout << "fixed running time " << time_fixed << endl;
+    if (verb)
+    {
+        Rcpp::Rcout << "fixed running time " << time_fixed << endl;
+    }
 
     t0 = std::chrono::high_resolution_clock::now();
     while (h < nsamps)
@@ -300,7 +282,10 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
 
     t1 = std::chrono::high_resolution_clock::now();
     auto time_sampling = 1.e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-    Rcpp::Rcout << "sampling time " << time_sampling << endl;
+    if (verb)
+    {
+        Rcpp::Rcout << "sampling time " << time_sampling << endl;
+    }
 
     // X and Y were scaled at the beginning, rescale estimations
     for (int ll = 0; (unsigned)ll < bsamps.n_cols; ll++)

@@ -23,9 +23,7 @@ List hs_gibbs(arma::mat Y, arma::mat X, int nsamps = 1000, double a = 1, double 
     arma::mat beta = zeros<mat>(nsamps, p);
     arma::vec sigma = zeros<vec>(nsamps);
     arma::mat lambda = zeros<mat>(nsamps, p);
-    arma::mat gamma_l = zeros<mat>(nsamps, p);
     arma::vec tau = zeros<vec>(nsamps);
-    arma::vec gamma_tt = zeros<vec>(nsamps);
     arma::mat Lambda0 = zeros<mat>(p, p);
 
     // initialize
@@ -57,7 +55,6 @@ List hs_gibbs(arma::mat Y, arma::mat X, int nsamps = 1000, double a = 1, double 
     arma::mat mu_n;
     arma::mat Lambda_n;
     arma::mat Lambda_n_inv;
-    arma::mat chol_Lambda_n;
     arma::mat chol_Lambda_n_inv;
     // sampling
 

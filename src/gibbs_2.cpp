@@ -23,9 +23,7 @@ List hs_gibbs_2(arma::mat Y, arma::mat X, int nsamps = 1000, double a = 1, doubl
     arma::mat beta = zeros<mat>(nsamps, p);
     arma::vec sigma = zeros<vec>(nsamps);
     arma::mat lambda = zeros<mat>(nsamps, p);
-    arma::mat gamma_l = zeros<mat>(nsamps, p);
     arma::vec tau = zeros<vec>(nsamps);
-    arma::vec gamma_tt = zeros<vec>(nsamps);
     arma::mat Lambda0 = zeros<mat>(p, p);
 
     // initialize
@@ -57,7 +55,6 @@ List hs_gibbs_2(arma::mat Y, arma::mat X, int nsamps = 1000, double a = 1, doubl
     arma::mat mu_n;
     arma::mat Lambda_n;
     arma::mat Lambda_n_inv;
-    arma::mat chol_Lambda_n;
     arma::mat chol_Lambda_n_inv;
     // sampling
 
@@ -99,7 +96,7 @@ List hs_gibbs_2(arma::mat Y, arma::mat X, int nsamps = 1000, double a = 1, doubl
     return List::create(Named("beta") = beta, Named("lambda") = lambda, Named("sigma") = sigma, Named("tau") = tau);
 }
 
-arma::mat sampling_beta_2(arma::mat old_beta, arma::mat mu_n, double sigma, int p, bool scale_sigma_prior, arma::mat lambda, double tau, arma::mat X, arma::mat Y)
+arma::mat sampling_beta_2(const arma::mat &old_beta, const arma::mat &mu_n, double sigma, int p, bool scale_sigma_prior, const arma::mat &lambda, double tau, const arma::mat &X, const arma::mat &Y)
 {
     // prior over beta_i is tau^2 * lambda_i^2 * sigma^2
     arma::mat new_beta;
