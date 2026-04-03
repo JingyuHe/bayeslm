@@ -15,24 +15,45 @@ double log_normal_density_matrix(const arma::mat &x, const arma::mat &Sigma_inv,
     return (output);
 }
 
-double log_normal_density_matrix_2(arma::mat x, arma::vec sig_diag, bool singular)
+double log_normal_density_matrix_2(const arma::mat &x, const arma::vec &Sigma_inv_diag, double log_det_Sigma_inv, bool singular)
 {
-    // log normal density function, for diagonal covariance matrix only
-    // input : sig_diag, diagonal elements of covariance matrix
-    double output = 0.0;
-    arma::mat deviation;
     if (singular == true)
     {
+        arma::vec x_vec = arma::vectorise(x);
+        return -0.5 * arma::dot(arma::square(x_vec), Sigma_inv_diag) + 0.5 * log_det_Sigma_inv;
     }
-    else
+    return 0.0;
+}
+
+double log_normal_density_matrix_2(const arma::mat &x, const arma::vec &Sigma_inv_diag, bool singular)
+{
+    if (singular == true)
     {
-        output = 0.0;
+        return log_normal_density_matrix_2(x, Sigma_inv_diag, arma::sum(arma::log(Sigma_inv_diag)), singular);
     }
-    return (output);
+    return 0.0;
 }
 
 namespace
 {
+
+arma::vec select_penalized_beta(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
+{
+    if (all_penalized)
+    {
+        return arma::vectorise(beta);
+    }
+    return conv_to<vec>::from(beta.rows(penalize_index));
+}
+
+arma::vec select_penalized_vec(const arma::vec &x, const arma::uvec &penalize_index, bool all_penalized)
+{
+    if (all_penalized)
+    {
+        return x;
+    }
+    return x.rows(penalize_index);
+}
 
 arma::mat extract_off_block(const arma::mat &Q, arma::uword block_start, arma::uword block_end)
 {
@@ -154,12 +175,17 @@ double user_prior_function_wrapper(const arma::mat &beta, const arma::vec &v, Rc
 
 double log_horseshoe_approx_prior(const arma::mat &beta, double v, double sigma, const arma::uvec &penalize, bool scale_sigma_prior)
 {
+    arma::uvec penalize_index = find(penalize > 0);
+    return log_horseshoe_approx_prior(beta, v, sigma, penalize_index, penalize_index.n_elem == penalize.n_elem, scale_sigma_prior);
+}
+
+double log_horseshoe_approx_prior(const arma::mat &beta, double v, double sigma, const arma::uvec &penalize_index, bool all_penalized, bool scale_sigma_prior)
+{
     if (scale_sigma_prior == true)
     {
         v = v * sigma;
     }
-    arma::uvec penalize_index = find(penalize > 0);
-    arma::vec beta2 = conv_to<vec>::from(beta.rows(penalize_index));
+    arma::vec beta2 = select_penalized_beta(beta, penalize_index, all_penalized);
     double p = (double)beta2.n_elem;
     beta2 = beta2 / v;
     arma::vec temp = log(log(1.0 + 2.0 / (pow(beta2, 2.0))));
@@ -253,13 +279,18 @@ double log_normal_density(double x, double mu, double sigma)
 
 double log_asymmetric_prior(const arma::mat &beta, double vglobal, double sigma, const arma::vec &prob, const arma::uvec &penalize, bool scale_sigma_prior)
 {
+    arma::uvec penalize_index = find(penalize > 0);
+    return log_asymmetric_prior(beta, vglobal, sigma, prob, penalize_index, penalize_index.n_elem == penalize.n_elem, scale_sigma_prior);
+}
+
+double log_asymmetric_prior(const arma::mat &beta, double vglobal, double sigma, const arma::vec &prob, const arma::uvec &penalize_index, bool all_penalized, bool scale_sigma_prior)
+{
     if (scale_sigma_prior == true)
     {
         vglobal = vglobal * sigma;
     }
-    arma::uvec penalize_index = find(penalize > 0);
-    arma::vec beta_subset = conv_to<vec>::from(beta.rows(penalize_index));
-    arma::vec prob_subset = prob.rows(penalize_index);
+    arma::vec beta_subset = select_penalized_beta(beta, penalize_index, all_penalized);
+    arma::vec prob_subset = select_penalized_vec(prob, penalize_index, all_penalized);
     // scale by vglobal
     beta_subset = beta_subset / vglobal;
     double p = (double)beta_subset.n_elem;
@@ -290,14 +321,19 @@ double log_cauchy_density(double x)
 
 double log_nonlocal_prior(const arma::mat &beta, double vglobal, double sigma, const arma::uvec &penalize, const arma::vec &prior_mean, bool scale_sigma_prior)
 {
+    arma::uvec penalize_index = find(penalize > 0);
+    return log_nonlocal_prior(beta, vglobal, sigma, penalize_index, prior_mean, penalize_index.n_elem == penalize.n_elem, scale_sigma_prior);
+}
+
+double log_nonlocal_prior(const arma::mat &beta, double vglobal, double sigma, const arma::uvec &penalize_index, const arma::vec &prior_mean, bool all_penalized, bool scale_sigma_prior)
+{
     if (scale_sigma_prior == true)
     {
         vglobal = vglobal * sigma;
     }
     // scale by vglobal
-    arma::uvec penalize_index = find(penalize > 0);
-    arma::vec prior_mean_subset = prior_mean.rows(penalize_index);
-    arma::vec beta_subset = conv_to<vec>::from(beta.rows(penalize_index)); // pick only penalized elements, otherwise flat (constant) prior
+    arma::vec prior_mean_subset = select_penalized_vec(prior_mean, penalize_index, all_penalized);
+    arma::vec beta_subset = select_penalized_beta(beta, penalize_index, all_penalized); // pick only penalized elements, otherwise flat (constant) prior
     double p = (double)beta_subset.n_elem;
     arma::vec result(p);
     for (int i = 0; i < p; i++)
@@ -311,18 +347,30 @@ double log_nonlocal_prior(const arma::mat &beta, double vglobal, double sigma, c
 
 double log_ridge_prior(const arma::mat &beta, double lambda, double vglobal, double sigma, const arma::uvec &penalize, bool scale_sigma_prior)
 {
+    arma::uvec penalize_index = find(penalize > 0);
+    return log_ridge_prior(beta, lambda, vglobal, sigma, penalize_index, penalize_index.n_elem == penalize.n_elem, scale_sigma_prior);
+}
+
+double log_ridge_prior(const arma::mat &beta, double lambda, double vglobal, double sigma, const arma::uvec &penalize_index, bool all_penalized, bool scale_sigma_prior)
+{
     // lambda is in variance scale
     // beta ~ N(0, 1 / lambda)
     if (scale_sigma_prior == true)
     {
         vglobal = vglobal * sigma;
     }
-    arma::uvec penalize_index = find(penalize > 0);
-    arma::mat beta_subset = beta.rows(penalize_index); // only care about elements with penalization
-
-    beta_subset = beta_subset / vglobal;
-    double p = (double)beta_subset.n_elem;
-    double output = arma::as_scalar(arma::sum(arma::pow(beta_subset, 2)));
+    double p = all_penalized ? static_cast<double>(beta.n_elem) : static_cast<double>(penalize_index.n_elem);
+    double output = 0.0;
+    if (all_penalized)
+    {
+        output = arma::accu(arma::square(beta / vglobal));
+    }
+    else
+    {
+        arma::mat beta_subset = beta.rows(penalize_index); // only care about elements with penalization
+        beta_subset = beta_subset / vglobal;
+        output = arma::as_scalar(arma::sum(arma::pow(beta_subset, 2)));
+    }
     output = p * log(lambda) / 2.0 - lambda / 2.0 * output;
     output = output - p * log(vglobal);
     return output;
@@ -331,7 +379,12 @@ double log_ridge_prior(const arma::mat &beta, double lambda, double vglobal, dou
 double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double vglobal, const arma::uvec &penalize)
 {
     arma::uvec penalize_index = find(penalize > 0);
-    arma::vec beta_subset = conv_to<vec>::from(beta.rows(penalize_index));
+    return log_laplace_prior(beta, tau, sigma, vglobal, penalize_index, penalize_index.n_elem == penalize.n_elem);
+}
+
+double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double vglobal, const arma::uvec &penalize_index, bool all_penalized)
+{
+    arma::vec beta_subset = select_penalized_beta(beta, penalize_index, all_penalized);
     double p = (double)beta_subset.n_elem;
     beta_subset = beta_subset / vglobal;
     double out = p * log(tau / 2.0 / sigma);
@@ -343,7 +396,12 @@ double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double
 double log_inverselaplace_prior(const arma::mat &beta, double lambda, double sigma, double vglobal, const arma::uvec &penalize)
 {
     arma::uvec penalize_index = find(penalize > 0);
-    arma::vec beta_subset = conv_to<vec>::from(beta.rows(penalize_index));
+    return log_inverselaplace_prior(beta, lambda, sigma, vglobal, penalize_index, penalize_index.n_elem == penalize.n_elem);
+}
+
+double log_inverselaplace_prior(const arma::mat &beta, double lambda, double sigma, double vglobal, const arma::uvec &penalize_index, bool all_penalized)
+{
+    arma::vec beta_subset = select_penalized_beta(beta, penalize_index, all_penalized);
     double p = (double)beta_subset.n_elem;
     // beta = beta / vglobal;
 

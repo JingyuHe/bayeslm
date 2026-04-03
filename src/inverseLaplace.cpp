@@ -148,21 +148,27 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
     }
     arma::field<arma::mat> beta_hat_fixed_blocks(N_blocks);
     arma::field<arma::uvec> penalize_blocks(N_blocks);
+    arma::uvec penalize_index = find(penalize > 0);
+    const bool all_penalized = penalize_index.n_elem == penalize.n_elem;
+    arma::field<arma::uvec> penalize_index_blocks(N_blocks);
+    arma::uvec penalize_all_blocks(N_blocks);
     arma::field<arma::vec> eta_blocks;
-    arma::field<arma::mat> eta_diag_blocks;
+    arma::vec eta_logsum_blocks;
     if (singular == true)
     {
         eta_blocks.set_size(N_blocks);
-        eta_diag_blocks.set_size(N_blocks);
+        eta_logsum_blocks.set_size(N_blocks);
     }
     for (int i = 0; i < N_blocks; i++)
     {
         beta_hat_fixed_blocks(i) = beta_hat_fixed.rows(block_indexes(i), block_indexes(i + 1) - 1);
         penalize_blocks(i) = penalize.rows(block_indexes(i), block_indexes(i + 1) - 1);
+        penalize_index_blocks(i) = find(penalize_blocks(i) > 0);
+        penalize_all_blocks(i) = penalize_index_blocks(i).n_elem == penalize_blocks(i).n_elem;
         if (singular == true)
         {
             eta_blocks(i) = eta.rows(block_indexes(i), block_indexes(i + 1) - 1);
-            eta_diag_blocks(i) = arma::diagmat(eta_blocks(i));
+            eta_logsum_blocks(i) = arma::sum(arma::log(eta_blocks(i)));
         }
     }
 
@@ -187,6 +193,14 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
             Rprintf("%d\n", h);
         }
 
+        double log_s = 0.0;
+        double inv_s_sq = 0.0;
+        if (singular == true)
+        {
+            log_s = std::log(s);
+            inv_s_sq = 1.0 / (s * s);
+        }
+
         // sampling beta
         // a gibbs sampler for all blocks
         for (int i = 0; i < N_blocks; i++)
@@ -197,7 +211,8 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
             const arma::uword block_end = block_indexes(i + 1) - 1;
             const arma::uword block_tail_size = block_tail_sizes(i);
             const bool skip_acceptance = (i == 0 && icept == true);
-            const arma::uvec &penalize_block = penalize_blocks(i);
+            const arma::uvec &penalize_index_block = penalize_index_blocks(i);
+            const bool all_penalized_block = penalize_all_blocks(i);
             const arma::mat b_block_current = b.rows(block_start, block_end);
 
             beta_condition.set_size(block_start + block_tail_size);
@@ -216,19 +231,21 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
             eps = randn<vec>(block_vec(i), 1);
             nu = chol_factors(i) * eps;
             nu = s * nu;
-            arma::mat Sigma_block_inv;
+            arma::vec Sigma_block_inv_diag;
+            double Sigma_block_log_det = 0.0;
             if (singular == true && !skip_acceptance)
             {
-                Sigma_block_inv = eta_diag_blocks(i) / pow(s, 2);
+                Sigma_block_inv_diag = eta_blocks(i) * inv_s_sq;
+                Sigma_block_log_det = eta_logsum_blocks(i) - 2.0 * static_cast<double>(eta_blocks(i).n_elem) * log_s;
             }
 
             // acceptance threshold
             if (!skip_acceptance)
             {
-                priorcomp = log_inverselaplace_prior(b_block_current, lambda, s, vglobal, penalize_block);
+                priorcomp = log_inverselaplace_prior(b_block_current, lambda, s, vglobal, penalize_index_block, all_penalized_block);
                 if (singular == true)
                 {
-                    priorcomp = priorcomp - log_normal_density_matrix(b_block_current, Sigma_block_inv, singular);
+                    priorcomp = priorcomp - log_normal_density_matrix_2(b_block_current, Sigma_block_inv_diag, Sigma_block_log_det, singular);
                 }
             }
 
@@ -261,10 +278,10 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
             {
                 while (true)
                 {
-                    priorcomp = log_inverselaplace_prior(proposed_beta, lambda, s, vglobal, penalize_block);
+                    priorcomp = log_inverselaplace_prior(proposed_beta, lambda, s, vglobal, penalize_index_block, all_penalized_block);
                     if (singular == true)
                     {
-                        priorcomp = priorcomp - log_normal_density_matrix(proposed_beta, Sigma_block_inv, singular);
+                        priorcomp = priorcomp - log_normal_density_matrix_2(proposed_beta, Sigma_block_inv_diag, Sigma_block_log_det, singular);
                     }
                     if (priorcomp >= ly)
                     {
