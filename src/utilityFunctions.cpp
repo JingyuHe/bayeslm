@@ -55,6 +55,15 @@ arma::vec select_penalized_vec(const arma::vec &x, const arma::uvec &penalize_in
     return x.rows(penalize_index);
 }
 
+double abs_sum_impl(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
+{
+    if (all_penalized)
+    {
+        return arma::accu(arma::abs(beta));
+    }
+    return arma::accu(arma::abs(beta.rows(penalize_index)));
+}
+
 arma::mat extract_off_block(const arma::mat &Q, arma::uword block_start, arma::uword block_end)
 {
     const arma::uword block_size = block_end - block_start + 1;
@@ -174,6 +183,11 @@ double scalar_conditional_mean(const arma::mat &mean_factor, const arma::vec &be
         output += arma::as_scalar(mean_factor.cols(block_start, mean_factor.n_cols - 1) * beta_dev.tail(tail_size));
     }
     return output;
+}
+
+double penalized_abs_sum(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
+{
+    return abs_sum_impl(beta, penalize_index, all_penalized);
 }
 
 // double betaprior(arma::mat beta, arma::vec v, int prior, Rcpp::Nullable<Rcpp::Function> user_prior_function){
@@ -423,15 +437,18 @@ double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double
     return log_laplace_prior(beta, tau, sigma, vglobal, penalize_index, penalize_index.n_elem == penalize.n_elem);
 }
 
-double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double vglobal, const arma::uvec &penalize_index, bool all_penalized)
+double log_laplace_prior_from_stats(double beta_abs_sum, arma::uword penalized_count, double tau, double sigma, double vglobal)
 {
-    arma::vec beta_subset = select_penalized_beta(beta, penalize_index, all_penalized);
-    double p = (double)beta_subset.n_elem;
-    beta_subset = beta_subset / vglobal;
+    const double p = static_cast<double>(penalized_count);
     double out = p * log(tau / 2.0 / sigma);
-    out = out - tau / sigma * arma::as_scalar(arma::sum(abs(beta_subset)));
+    out = out - tau / sigma / vglobal * beta_abs_sum;
     out = out - p * log(vglobal);
     return out;
+}
+
+double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double vglobal, const arma::uvec &penalize_index, bool all_penalized)
+{
+    return log_laplace_prior_from_stats(abs_sum_impl(beta, penalize_index, all_penalized), all_penalized ? beta.n_elem : penalize_index.n_elem, tau, sigma, vglobal);
 }
 
 double log_inverselaplace_prior(const arma::mat &beta, double lambda, double sigma, double vglobal, const arma::uvec &penalize)

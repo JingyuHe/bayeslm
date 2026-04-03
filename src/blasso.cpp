@@ -174,6 +174,8 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
     double tau = 1.0;
     double tau_prop = 0.0;
     arma::vec tausamps(nsamps);
+    const arma::uword penalized_count = all_penalized ? static_cast<arma::uword>(b.n_elem) : static_cast<arma::uword>(penalize_index.n_elem);
+    double penalized_beta_abs_sum = penalized_abs_sum(b, penalize_index, all_penalized);
 
     auto t1 = std::chrono::high_resolution_clock::now();
     auto time_fixed = 1.e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
@@ -212,7 +214,10 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
             const bool skip_acceptance = (i == 0 && icept == true);
             const arma::uvec &penalize_index_block = penalize_index_blocks(i);
             const bool all_penalized_block = penalize_all_blocks(i);
+            const arma::uword penalized_count_block = all_penalized_block ? static_cast<arma::uword>(block_end - block_start + 1) : static_cast<arma::uword>(penalize_index_block.n_elem);
             const arma::mat b_block_current = b.rows(block_start, block_end);
+            double block_abs_sum_current = 0.0;
+            double block_abs_sum_proposed = 0.0;
 
             if (scalar_block)
             {
@@ -257,6 +262,7 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
             // acceptance threshold
             if (!skip_acceptance)
             {
+                block_abs_sum_current = penalized_abs_sum(b_block_current, penalize_index_block, all_penalized_block);
                 priorcomp = log_laplace_prior(b_block_current, tau, s, vglobal, penalize_index_block, all_penalized_block);
                 if (singular == true)
                 {
@@ -347,13 +353,15 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
                     b.subvec(block_start, block_end) = proposed_beta;
                     beta_dev.subvec(block_start, block_end) = arma::vectorise(proposed_beta - beta_hat_fixed_blocks(i));
                 }
+                block_abs_sum_proposed = penalized_abs_sum(proposed_beta, penalize_index_block, all_penalized_block);
+                penalized_beta_abs_sum += block_abs_sum_proposed - block_abs_sum_current;
             }
         }
 
         // update tau
         tau_prop = exp(log(tau) + arma::as_scalar(randn(1)) * 0.05);
 
-        ratio = exp(log_laplace_prior(b, tau_prop, s, vglobal, penalize_index, all_penalized) + log_normal_density(tau_prop, 0.0, 100.0) - log_laplace_prior(b, tau, s, vglobal, penalize_index, all_penalized) - log_normal_density(tau, 0.0, 100.0) + log(tau_prop) - log(tau));
+        ratio = exp(log_laplace_prior_from_stats(penalized_beta_abs_sum, penalized_count, tau_prop, s, vglobal) + log_normal_density(tau_prop, 0.0, 100.0) - log_laplace_prior_from_stats(penalized_beta_abs_sum, penalized_count, tau, s, vglobal) - log_normal_density(tau, 0.0, 100.0) + log(tau_prop) - log(tau));
 
         if (as_scalar(randu(1)) < ratio)
         {
