@@ -69,6 +69,9 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
     arma::mat YY = trans(Y) * Y;
     arma::mat YX = trans(Y) * X;
     arma::mat XX = trans(X) * X;
+    double YY_scalar = as_scalar(YY);
+    double sigma_shape = (n + kap2) / 2.0;
+    arma::vec sdx_vec = arma::vectorise(sdx.t());
     burn = burn + 1;
 
     double s = sigma;
@@ -140,18 +143,22 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
     // beta deviace from the mean
 
     arma::uvec block_indexes(N_blocks + 1);
+    arma::uvec block_tail_sizes(N_blocks);
     arma::vec block_cum_count = arma::cumsum(block_vec);
     block_indexes(0) = 0;
     for (int i = 0; i < N_blocks; i++)
     {
         block_indexes(i + 1) = block_cum_count(i);
+        block_tail_sizes(i) = p - block_indexes(i + 1);
     }
     arma::field<arma::mat> beta_hat_fixed_blocks(N_blocks);
     arma::field<arma::uvec> penalize_blocks(N_blocks);
     arma::field<arma::vec> eta_blocks;
+    arma::field<arma::mat> eta_diag_blocks;
     if (singular == true)
     {
         eta_blocks.set_size(N_blocks);
+        eta_diag_blocks.set_size(N_blocks);
     }
     for (int i = 0; i < N_blocks; i++)
     {
@@ -160,6 +167,7 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
         if (singular == true)
         {
             eta_blocks(i) = eta.rows(block_indexes(i), block_indexes(i + 1) - 1);
+            eta_diag_blocks(i) = arma::diagmat(eta_blocks(i));
         }
     }
 
@@ -187,11 +195,20 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
             // compute conditional mean
             const arma::uword block_start = block_indexes(i);
             const arma::uword block_end = block_indexes(i + 1) - 1;
+            const arma::uword block_tail_size = block_tail_sizes(i);
             const bool skip_acceptance = (i == 0 && icept == true);
             const arma::uvec &penalize_block = penalize_blocks(i);
             const arma::mat b_block_current = b.rows(block_start, block_end);
 
-            beta_condition = join_cols(beta_dev.head_rows(block_start), beta_dev.tail_rows(p - block_indexes(i + 1)));
+            beta_condition.set_size(block_start + block_tail_size);
+            if (block_start > 0)
+            {
+                beta_condition.head_rows(block_start) = beta_dev.head_rows(block_start);
+            }
+            if (block_tail_size > 0)
+            {
+                beta_condition.tail_rows(block_tail_size) = beta_dev.tail_rows(block_tail_size);
+            }
             beta_hat_block = beta_hat_fixed_blocks(i) + mean_factors(i) * beta_condition;
 
             // define ellipse
@@ -202,7 +219,7 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
             arma::mat Sigma_block_inv;
             if (singular == true && !skip_acceptance)
             {
-                Sigma_block_inv = arma::diagmat(eta_blocks(i)) / pow(s, 2);
+                Sigma_block_inv = eta_diag_blocks(i) / pow(s, 2);
             }
 
             // acceptance threshold
@@ -294,14 +311,14 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
         // update sigma
         if (scale_sigma_prior == false)
         {
-            ssq = as_scalar(YY) - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b));
+            ssq = YY_scalar - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b));
         }
         else
         {
-            ssq = as_scalar(YY) - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b)) + as_scalar(trans(b) * b);
+            ssq = YY_scalar - 2.0 * as_scalar(YX * (b)) + as_scalar(trans(b) * XX * (b)) + as_scalar(trans(b) * b);
         }
 
-        s = 1.0 / sqrt(arma::as_scalar(arma::randg(1, distr_param((n + kap2) / 2.0, 2.0 / (ssq + s2)))));
+        s = 1.0 / sqrt(arma::as_scalar(arma::randg(1, distr_param(sigma_shape, 2.0 / (ssq + s2)))));
 
         iter = iter + 1;
 
@@ -329,10 +346,8 @@ List horseshoe_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec
     }
 
     // X and Y were scaled at the beginning, rescale estimations
-    for (int ll = 0; (unsigned)ll < bsamps.n_cols; ll++)
-    {
-        bsamps.col(ll) = bsamps.col(ll) / trans(sdx) * sdy;
-    }
+    bsamps.each_col() /= sdx_vec;
+    bsamps *= sdy;
 
     // adjust intercept if standardize all X variables
     if (icept && standardize)
