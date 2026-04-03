@@ -38,6 +38,15 @@ double log_normal_density_matrix_2(const arma::mat &x, const arma::vec &sig_diag
     return 0.0;
 }
 
+double log_normal_density_scalar_2(double x, double sig_diag, double log_det_sig_diag, bool singular)
+{
+    if (singular == true)
+    {
+        return -0.5 * sig_diag * x * x + 0.5 * log_det_sig_diag;
+    }
+    return 0.0;
+}
+
 namespace
 {
 
@@ -243,6 +252,20 @@ double log_horseshoe_approx_prior(const arma::mat &beta, double v, double sigma,
     return ll;
 }
 
+double log_horseshoe_approx_prior_scalar(double beta, double v, double sigma, bool penalized, bool scale_sigma_prior)
+{
+    if (!penalized)
+    {
+        return 0.0;
+    }
+    if (scale_sigma_prior == true)
+    {
+        v = v * sigma;
+    }
+    const double beta_scaled = beta / v;
+    return std::log(std::log(1.0 + 2.0 / (beta_scaled * beta_scaled))) - std::log(v);
+}
+
 arma::vec sample_exp(const arma::vec &lambda)
 {
     int n = lambda.n_elem;
@@ -388,6 +411,30 @@ double log_asymmetric_prior(const arma::mat &beta, double vglobal, double sigma,
     return output;
 }
 
+double log_asymmetric_prior_scalar(double beta, double vglobal, double sigma, double prob, bool penalized, bool scale_sigma_prior)
+{
+    if (!penalized)
+    {
+        return 0.0;
+    }
+    if (scale_sigma_prior == true)
+    {
+        vglobal = vglobal * sigma;
+    }
+    const double beta_scaled = beta / vglobal;
+    const double s = (1.0 - prob) / prob;
+    double output;
+    if (beta_scaled > 0.0)
+    {
+        output = std::log(2.0) + log_cauchy_density(beta_scaled / s) + std::log(1.0 - prob) - std::log(s);
+    }
+    else
+    {
+        output = std::log(2.0) + std::log(prob) + log_cauchy_density(beta_scaled);
+    }
+    return output - std::log(vglobal);
+}
+
 double log_cauchy_density(double x)
 {
     double output = -1.0 * log(M_PI) - log(1.0 + pow(x, 2));
@@ -418,6 +465,20 @@ double log_nonlocal_prior(const arma::mat &beta, double vglobal, double sigma, c
     double output = as_scalar(sum(result));
     output = output - p * log(vglobal);
     return output;
+}
+
+double log_nonlocal_prior_scalar(double beta, double vglobal, double sigma, double prior_mean, bool penalized, bool scale_sigma_prior)
+{
+    if (!penalized)
+    {
+        return 0.0;
+    }
+    if (scale_sigma_prior == true)
+    {
+        vglobal = vglobal * sigma;
+    }
+    double output = -std::log(2.0) + log_cauchy_density((beta / 0.25 - prior_mean) / vglobal) - std::log(2.0) + log_cauchy_density((beta / 0.25 + prior_mean) / vglobal);
+    return output - std::log(vglobal);
 }
 
 double penalized_abs_sum(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
@@ -455,6 +516,15 @@ double log_ridge_prior(const arma::mat &beta, double lambda, double vglobal, dou
     return log_ridge_prior_from_stats(square_sum_impl(beta, penalize_index, all_penalized), penalized_count, lambda, vglobal, sigma, scale_sigma_prior);
 }
 
+double log_ridge_prior_scalar(double beta, double lambda, double vglobal, double sigma, bool penalized, bool scale_sigma_prior)
+{
+    if (!penalized)
+    {
+        return 0.0;
+    }
+    return log_ridge_prior_from_stats(beta * beta, 1, lambda, vglobal, sigma, scale_sigma_prior);
+}
+
 double log_laplace_prior_from_stats(double beta_abs_sum, arma::uword penalized_count, double tau, double sigma, double vglobal)
 {
     double p = static_cast<double>(penalized_count);
@@ -473,6 +543,15 @@ double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double
 double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double vglobal, const arma::uvec &penalize_index, bool all_penalized)
 {
     return log_laplace_prior_from_stats(abs_sum_impl(beta, penalize_index, all_penalized), all_penalized ? static_cast<arma::uword>(beta.n_elem) : static_cast<arma::uword>(penalize_index.n_elem), tau, sigma, vglobal);
+}
+
+double log_laplace_prior_scalar(double beta, double tau, double sigma, double vglobal, bool penalized)
+{
+    if (!penalized)
+    {
+        return 0.0;
+    }
+    return log_laplace_prior_from_stats(std::abs(beta), 1, tau, sigma, vglobal);
 }
 
 double log_inverselaplace_prior(const arma::mat &beta, double lambda, double sigma, double vglobal, const arma::uvec &penalize)
@@ -500,6 +579,15 @@ double log_inverselaplace_prior(const arma::mat &beta, double lambda, double sig
     }
 
     return out;
+}
+
+double log_inverselaplace_prior_scalar(double beta, double lambda, double sigma, double vglobal, bool penalized)
+{
+    if (!penalized || beta == 0.0)
+    {
+        return 0.0;
+    }
+    return std::log(lambda / 2.0) - 2.0 * std::log(std::abs(beta)) - lambda / std::abs(beta);
 }
 
 arma::mat sampling_beta(const arma::mat &mu_n, const arma::mat &chol_Lambda_n_inv, double sigma, int p, bool scale_sigma_prior)

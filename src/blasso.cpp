@@ -214,20 +214,72 @@ List blasso_cpp_loop(arma::mat Y, arma::mat X, arma::uvec penalize, arma::vec bl
             // compute conditional mean
             const arma::uword block_start = block_indexes(i);
             const arma::uword block_end = block_indexes(i + 1) - 1;
+            const bool scalar_block = (block_vec(i) == 1);
             const arma::uvec &penalize_index_block = penalize_index_blocks(i);
             const bool all_penalized_block = penalize_all_blocks(i);
             const double block_abs_sum_current = penalized_abs_sum(b.rows(block_start, block_end), penalize_index_block, all_penalized_block);
 
-            if (block_vec(i) == 1)
+            if (scalar_block)
             {
-                beta_hat_block = beta_hat_fixed.rows(block_start, block_end);
-                beta_hat_block(0, 0) = beta_hat_block(0, 0) + scalar_conditional_mean(mean_factors(i), b, beta_hat_fixed, block_start);
+                const double beta_hat_scalar = beta_hat_fixed(block_start) + scalar_conditional_mean(mean_factors(i), b, beta_hat_fixed, block_start);
+                const double current_beta = b(block_start);
+                eps = randn<vec>(block_vec(i), 1);
+                const double nu_scalar = s * chol_factors(i)(0, 0) * eps(0);
+                const bool penalized_scalar = all_penalized_block;
+                const double Sigma_scalar_inv_diag = singular ? eta_blocks(i)(0) * inv_s_sq : 0.0;
+                const double Sigma_scalar_log_det = singular ? (eta_logsum_blocks(i) - 2.0 * log_s) : 0.0;
+
+                priorcomp = log_laplace_prior_scalar(current_beta, tau, s, vglobal, penalized_scalar);
+                if (singular == true)
+                {
+                    priorcomp = priorcomp - log_normal_density_scalar_2(current_beta, Sigma_scalar_inv_diag, Sigma_scalar_log_det, singular);
+                }
+
+                u = arma::as_scalar(randu(1));
+                ly = priorcomp + log(u);
+
+                const double beta_block_scalar = current_beta - beta_hat_scalar;
+                thetaprop = arma::as_scalar(randu(1)) * 2 * M_PI;
+                double betaprop_scalar = beta_block_scalar * cos(thetaprop) + nu_scalar * sin(thetaprop);
+                thetamin = thetaprop - 2.0 * M_PI;
+                thetamax = thetaprop;
+
+                if (i == 0 && icept == true)
+                {
+                    b(block_start) = betaprop_scalar + beta_hat_scalar;
+                }
+                else
+                {
+                    while (log_laplace_prior_scalar(beta_hat_scalar + betaprop_scalar, tau, s, vglobal, penalized_scalar) - log_normal_density_scalar_2(beta_hat_scalar + betaprop_scalar, Sigma_scalar_inv_diag, Sigma_scalar_log_det, singular) < ly)
+                    {
+
+                        loopcount += 1;
+
+                        if (thetaprop < 0)
+                        {
+
+                            thetamin = thetaprop;
+                        }
+                        else
+                        {
+
+                            thetamax = thetaprop;
+                        }
+
+                        thetaprop = runif(1, thetamin, thetamax)[0];
+
+                        betaprop_scalar = beta_block_scalar * cos(thetaprop) + nu_scalar * sin(thetaprop);
+                    }
+
+                    b(block_start) = betaprop_scalar + beta_hat_scalar;
+                }
+
+                penalized_beta_abs_sum += (penalized_scalar ? std::abs(b(block_start)) : 0.0) - block_abs_sum_current;
+                continue;
             }
-            else
-            {
-                beta_condition = join_cols(b.head_rows(block_start) - beta_hat_fixed.head_rows(block_start), b.tail_rows(p - block_indexes(i + 1)) - beta_hat_fixed.tail_rows(p - block_indexes(i + 1)));
-                beta_hat_block = beta_hat_fixed.rows(block_start, block_end) + mean_factors(i) * beta_condition;
-            }
+
+            beta_condition = join_cols(b.head_rows(block_start) - beta_hat_fixed.head_rows(block_start), b.tail_rows(p - block_indexes(i + 1)) - beta_hat_fixed.tail_rows(p - block_indexes(i + 1)));
+            beta_hat_block = beta_hat_fixed.rows(block_start, block_end) + mean_factors(i) * beta_condition;
 
             // define ellipse
             // eps = rnorm((uword) block_vec(i));
