@@ -1,13 +1,11 @@
 #include "../inst/include/bayeslm.h"
 
-double log_normal_density_matrix(arma::mat x, arma::mat Sigma_inv, bool singular)
+double log_normal_density_matrix(const arma::mat &x, const arma::mat &Sigma_inv, bool singular)
 {
     double output = 0.0;
-    arma::mat deviation;
     if (singular == true)
     {
-        deviation = x;
-        output = -0.5 * as_scalar(trans(deviation) * Sigma_inv * deviation);
+        output = -0.5 * as_scalar(trans(x) * Sigma_inv * x);
         output = output + 0.5 * log(det(Sigma_inv));
     }
     else
@@ -17,26 +15,67 @@ double log_normal_density_matrix(arma::mat x, arma::mat Sigma_inv, bool singular
     return (output);
 }
 
-double log_normal_density_matrix_2(arma::mat x, arma::vec sig_diag, bool singular)
+double log_normal_density_matrix_2(const arma::mat &x, const arma::vec &sig_diag, double log_det_sig_diag, bool singular)
 {
     // log normal density function, for diagonal precision matrix only
     // input : sig_diag, diagonal elements of precision matrix
-    double output = 0.0;
     if (singular == true)
     {
         arma::vec deviation = arma::vectorise(x);
-        output = -0.5 * arma::dot(sig_diag, arma::square(deviation));
-        output = output + 0.5 * sum(log(sig_diag));
+        return -0.5 * arma::dot(sig_diag, arma::square(deviation)) + 0.5 * log_det_sig_diag;
     }
-    else
+    return 0.0;
+}
+
+double log_normal_density_matrix_2(const arma::mat &x, const arma::vec &sig_diag, bool singular)
+{
+    // log normal density function, for diagonal precision matrix only
+    // input : sig_diag, diagonal elements of precision matrix
+    if (singular == true)
     {
-        output = 0.0;
+        return log_normal_density_matrix_2(x, sig_diag, sum(log(sig_diag)), singular);
     }
-    return (output);
+    return 0.0;
 }
 
 namespace
 {
+
+arma::vec select_penalized_beta(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
+{
+    if (all_penalized)
+    {
+        return arma::vectorise(beta);
+    }
+    return conv_to<vec>::from(beta.rows(penalize_index));
+}
+
+arma::vec select_penalized_vec(const arma::vec &x, const arma::uvec &penalize_index, bool all_penalized)
+{
+    if (all_penalized)
+    {
+        return x;
+    }
+    return x.rows(penalize_index);
+}
+
+double abs_sum_impl(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
+{
+    if (all_penalized)
+    {
+        return arma::accu(arma::abs(beta));
+    }
+    return arma::accu(arma::abs(beta.rows(penalize_index)));
+}
+
+double square_sum_impl(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
+{
+    if (all_penalized)
+    {
+        return arma::accu(arma::square(beta));
+    }
+    return arma::accu(arma::square(beta.rows(penalize_index)));
+}
 
 arma::mat extract_off_block(const arma::mat &Q, arma::uword block_start, arma::uword block_end)
 {
@@ -132,7 +171,7 @@ struct block_factor : public Worker
 
 } // namespace
 
-arma::field<arma::mat> conditional_factors_parallel(arma::mat X, arma::vec V)
+arma::field<arma::mat> conditional_factors_parallel(const arma::mat &X, const arma::vec &V)
 {
     int n_blocks = V.n_elem;
     arma::vec V_cumsum = arma::cumsum(V);
@@ -176,21 +215,26 @@ arma::field<arma::mat> conditional_factors_parallel(arma::mat X, arma::vec V)
 //     return output;
 // }
 
-double user_prior_function_wrapper(arma::mat beta, arma::vec v, Rcpp::Function f)
+double user_prior_function_wrapper(const arma::mat &beta, const arma::vec &v, Rcpp::Function f)
 {
     SEXP result = f(beta, v);
     double output = Rcpp::as<double>(result);
     return output;
 }
 
-double log_horseshoe_approx_prior(arma::mat beta, double v, double sigma, arma::uvec penalize, bool scale_sigma_prior)
+double log_horseshoe_approx_prior(const arma::mat &beta, double v, double sigma, const arma::uvec &penalize, bool scale_sigma_prior)
+{
+    arma::uvec penalize_index = find(penalize > 0);
+    return log_horseshoe_approx_prior(beta, v, sigma, penalize_index, penalize_index.n_elem == penalize.n_elem, scale_sigma_prior);
+}
+
+double log_horseshoe_approx_prior(const arma::mat &beta, double v, double sigma, const arma::uvec &penalize_index, bool all_penalized, bool scale_sigma_prior)
 {
     if (scale_sigma_prior == true)
     {
         v = v * sigma;
     }
-    arma::uvec penalize_index = find(penalize > 0);
-    arma::vec beta2 = conv_to<vec>::from(beta.rows(penalize_index));
+    arma::vec beta2 = select_penalized_beta(beta, penalize_index, all_penalized);
     double p = (double)beta2.n_elem;
     beta2 = beta2 / v;
     arma::vec temp = log(log(1.0 + 2.0 / (pow(beta2, 2.0))));
@@ -199,7 +243,7 @@ double log_horseshoe_approx_prior(arma::mat beta, double v, double sigma, arma::
     return ll;
 }
 
-arma::vec sample_exp(arma::vec lambda)
+arma::vec sample_exp(const arma::vec &lambda)
 {
     int n = lambda.n_elem;
     arma::vec sample;
@@ -208,7 +252,7 @@ arma::vec sample_exp(arma::vec lambda)
     return (sample);
 }
 
-arma::mat scaling(arma::mat x)
+arma::mat scaling(const arma::mat &x)
 {
     // This function normalize a matrix x by column
     int n = x.n_rows;
@@ -227,7 +271,7 @@ arma::mat scaling(arma::mat x)
     return x_output;
 }
 
-double log_double_exp_prior(arma::mat beta, arma::vec v)
+double log_double_exp_prior(const arma::mat &beta, const arma::vec &v)
 {
     // log density of double exponential prior
     arma::vec beta2 = conv_to<vec>::from(beta);
@@ -238,7 +282,7 @@ double log_double_exp_prior(arma::mat beta, arma::vec v)
     return ll;
 }
 
-double log_cauchy_prior(arma::mat beta, arma::vec v)
+double log_cauchy_prior(const arma::mat &beta, const arma::vec &v)
 {
     // log density of Cauchy prior
     arma::vec beta2 = conv_to<vec>::from(beta);
@@ -249,7 +293,7 @@ double log_cauchy_prior(arma::mat beta, arma::vec v)
     return ll;
 }
 
-double log_normal_prior(arma::mat beta, arma::vec v)
+double log_normal_prior(const arma::mat &beta, const arma::vec &v)
 {
     // log density of normal prior
     arma::vec beta2 = conv_to<vec>::from(beta);
@@ -260,7 +304,7 @@ double log_normal_prior(arma::mat beta, arma::vec v)
     return ll;
 }
 
-arma::field<arma::mat> conditional_factors(arma::mat X, arma::vec V)
+arma::field<arma::mat> conditional_factors(const arma::mat &X, const arma::vec &V)
 {
     /*
         This function computes block conditional factors from the full precision matrix
@@ -286,6 +330,21 @@ arma::field<arma::mat> conditional_factors(arma::mat X, arma::vec V)
     return output;
 }
 
+double scalar_conditional_mean(const arma::mat &mean_factor, const arma::vec &b, const arma::mat &beta_hat_fixed, arma::uword block_start)
+{
+    double output = 0.0;
+    if (block_start > 0)
+    {
+        output += arma::as_scalar(mean_factor.cols(0, block_start - 1) * (b.head_rows(block_start) - beta_hat_fixed.head_rows(block_start)));
+    }
+    const arma::uword tail_size = b.n_elem - block_start - 1;
+    if (tail_size > 0)
+    {
+        output += arma::as_scalar(mean_factor.cols(block_start, mean_factor.n_cols - 1) * (b.tail_rows(tail_size) - beta_hat_fixed.tail_rows(tail_size)));
+    }
+    return output;
+}
+
 double log_normal_density(double x, double mu, double sigma)
 {
     // returns log density of normal(mu, sigma)
@@ -293,29 +352,34 @@ double log_normal_density(double x, double mu, double sigma)
     return (output);
 }
 
-double log_asymmetric_prior(arma::mat beta, double vglobal, double sigma, arma::vec prob, arma::uvec penalize, bool scale_sigma_prior)
+double log_asymmetric_prior(const arma::mat &beta, double vglobal, double sigma, const arma::vec &prob, const arma::uvec &penalize, bool scale_sigma_prior)
+{
+    arma::uvec penalize_index = find(penalize > 0);
+    return log_asymmetric_prior(beta, vglobal, sigma, prob, penalize_index, penalize_index.n_elem == penalize.n_elem, scale_sigma_prior);
+}
+
+double log_asymmetric_prior(const arma::mat &beta, double vglobal, double sigma, const arma::vec &prob, const arma::uvec &penalize_index, bool all_penalized, bool scale_sigma_prior)
 {
     if (scale_sigma_prior == true)
     {
         vglobal = vglobal * sigma;
     }
-    arma::uvec penalize_index = find(penalize > 0);
-    beta = beta.rows(penalize_index);
-    prob = prob.rows(penalize_index);
+    arma::vec beta_subset = select_penalized_beta(beta, penalize_index, all_penalized);
+    arma::vec prob_subset = select_penalized_vec(prob, penalize_index, all_penalized);
     // scale by vglobal
-    beta = beta / vglobal;
-    double p = (double)beta.n_elem;
-    arma::vec s = (1.0 - prob) / prob;
-    arma::vec result = zeros<vec>(p);
+    beta_subset = beta_subset / vglobal;
+    double p = (double)beta_subset.n_elem;
+    arma::vec s = (1.0 - prob_subset) / prob_subset;
+    arma::vec result(p);
     for (int i = 0; i < p; i++)
     {
-        if (beta(i) > 0)
+        if (beta_subset(i) > 0)
         {
-            result(i) = log(2) + log_cauchy_density(beta(i) / s(i)) + log(1.0 - prob(i)) - log(s(i));
+            result(i) = log(2) + log_cauchy_density(beta_subset(i) / s(i)) + log(1.0 - prob_subset(i)) - log(s(i));
         }
         else
         {
-            result(i) = log(2) + log(prob(i)) + log_cauchy_density(beta(i));
+            result(i) = log(2) + log(prob_subset(i)) + log_cauchy_density(beta_subset(i));
         }
     }
     double output = as_scalar(sum(result));
@@ -330,63 +394,97 @@ double log_cauchy_density(double x)
     return output;
 }
 
-double log_nonlocal_prior(arma::mat beta, double vglobal, double sigma, arma::uvec penalize, arma::vec prior_mean, bool scale_sigma_prior)
+double log_nonlocal_prior(const arma::mat &beta, double vglobal, double sigma, const arma::uvec &penalize, const arma::vec &prior_mean, bool scale_sigma_prior)
+{
+    arma::uvec penalize_index = find(penalize > 0);
+    return log_nonlocal_prior(beta, vglobal, sigma, penalize_index, prior_mean, penalize_index.n_elem == penalize.n_elem, scale_sigma_prior);
+}
+
+double log_nonlocal_prior(const arma::mat &beta, double vglobal, double sigma, const arma::uvec &penalize_index, const arma::vec &prior_mean, bool all_penalized, bool scale_sigma_prior)
 {
     if (scale_sigma_prior == true)
     {
         vglobal = vglobal * sigma;
     }
     // scale by vglobal
-    arma::uvec penalize_index = find(penalize > 0);
-    prior_mean = prior_mean.rows(penalize_index);
-    beta = beta.rows(penalize_index); // pick only penalized elements, otherwise flat (constant) prior
-    double p = (double)beta.n_elem;
-    arma::vec result = zeros<vec>(p);
+    arma::vec prior_mean_subset = select_penalized_vec(prior_mean, penalize_index, all_penalized);
+    arma::vec beta_subset = select_penalized_beta(beta, penalize_index, all_penalized);
+    double p = (double)beta_subset.n_elem;
+    arma::vec result(p);
     for (int i = 0; i < p; i++)
     {
-        result(i) = -log(2) + log_cauchy_density((beta(i) / 0.25 - prior_mean(i)) / vglobal) - log(2) + log_cauchy_density((beta(i) / 0.25 + prior_mean(i)) / vglobal);
+        result(i) = -log(2) + log_cauchy_density((beta_subset(i) / 0.25 - prior_mean_subset(i)) / vglobal) - log(2) + log_cauchy_density((beta_subset(i) / 0.25 + prior_mean_subset(i)) / vglobal);
     }
     double output = as_scalar(sum(result));
     output = output - p * log(vglobal);
     return output;
 }
 
-double log_ridge_prior(arma::mat beta, double lambda, double vglobal, double sigma, arma::uvec penalize, bool scale_sigma_prior)
+double penalized_abs_sum(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
 {
-    // lambda is in variance scale
-    // beta ~ N(0, 1 / lambda)
+    return abs_sum_impl(beta, penalize_index, all_penalized);
+}
+
+double penalized_square_sum(const arma::mat &beta, const arma::uvec &penalize_index, bool all_penalized)
+{
+    return square_sum_impl(beta, penalize_index, all_penalized);
+}
+
+double log_ridge_prior_from_stats(double beta_sq_sum, arma::uword penalized_count, double lambda, double vglobal, double sigma, bool scale_sigma_prior)
+{
     if (scale_sigma_prior == true)
     {
         vglobal = vglobal * sigma;
     }
-    arma::uvec penalize_index = find(penalize > 0);
-    beta = beta.rows(penalize_index); // only care about elements with penalization
-
-    beta = beta / vglobal;
-    double p = (double)beta.n_elem;
-    double output = arma::as_scalar(arma::sum(arma::pow(beta, 2)));
+    double p = static_cast<double>(penalized_count);
+    double output = beta_sq_sum / (vglobal * vglobal);
     output = p * log(lambda) / 2.0 - lambda / 2.0 * output;
     output = output - p * log(vglobal);
     return output;
 }
 
-double log_laplace_prior(arma::mat beta, double tau, double sigma, double vglobal, arma::uvec penalize)
+double log_ridge_prior(const arma::mat &beta, double lambda, double vglobal, double sigma, const arma::uvec &penalize, bool scale_sigma_prior)
 {
     arma::uvec penalize_index = find(penalize > 0);
-    beta = beta.rows(penalize_index);
-    double p = (double)beta.n_elem;
-    beta = beta / vglobal;
+    return log_ridge_prior(beta, lambda, vglobal, sigma, penalize_index, penalize_index.n_elem == penalize.n_elem, scale_sigma_prior);
+}
+
+double log_ridge_prior(const arma::mat &beta, double lambda, double vglobal, double sigma, const arma::uvec &penalize_index, bool all_penalized, bool scale_sigma_prior)
+{
+    const arma::uword penalized_count = all_penalized ? static_cast<arma::uword>(beta.n_elem) : static_cast<arma::uword>(penalize_index.n_elem);
+    return log_ridge_prior_from_stats(square_sum_impl(beta, penalize_index, all_penalized), penalized_count, lambda, vglobal, sigma, scale_sigma_prior);
+}
+
+double log_laplace_prior_from_stats(double beta_abs_sum, arma::uword penalized_count, double tau, double sigma, double vglobal)
+{
+    double p = static_cast<double>(penalized_count);
     double out = p * log(tau / 2.0 / sigma);
-    out = out - tau / sigma * arma::as_scalar(arma::sum(abs(beta)));
+    out = out - tau / sigma / vglobal * beta_abs_sum;
     out = out - p * log(vglobal);
     return out;
 }
 
-double log_inverselaplace_prior(arma::mat beta, double lambda, double sigma, double vglobal, arma::uvec penalize)
+double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double vglobal, const arma::uvec &penalize)
 {
     arma::uvec penalize_index = find(penalize > 0);
-    beta = beta.rows(penalize_index);
-    double p = (double)beta.n_elem;
+    return log_laplace_prior(beta, tau, sigma, vglobal, penalize_index, penalize_index.n_elem == penalize.n_elem);
+}
+
+double log_laplace_prior(const arma::mat &beta, double tau, double sigma, double vglobal, const arma::uvec &penalize_index, bool all_penalized)
+{
+    return log_laplace_prior_from_stats(abs_sum_impl(beta, penalize_index, all_penalized), all_penalized ? static_cast<arma::uword>(beta.n_elem) : static_cast<arma::uword>(penalize_index.n_elem), tau, sigma, vglobal);
+}
+
+double log_inverselaplace_prior(const arma::mat &beta, double lambda, double sigma, double vglobal, const arma::uvec &penalize)
+{
+    arma::uvec penalize_index = find(penalize > 0);
+    return log_inverselaplace_prior(beta, lambda, sigma, vglobal, penalize_index, penalize_index.n_elem == penalize.n_elem);
+}
+
+double log_inverselaplace_prior(const arma::mat &beta, double lambda, double sigma, double vglobal, const arma::uvec &penalize_index, bool all_penalized)
+{
+    arma::vec beta_subset = select_penalized_beta(beta, penalize_index, all_penalized);
+    double p = (double)beta_subset.n_elem;
     // beta = beta / vglobal;
 
     double out = 0.0;
@@ -395,16 +493,16 @@ double log_inverselaplace_prior(arma::mat beta, double lambda, double sigma, dou
 
     for (size_t i = 0; i < p; i++)
     {
-        if (beta(i, 0) != 0.0)
+        if (beta_subset(i) != 0.0)
         {
-            out = out + temp - 2 * log(abs(beta(i, 0))) - lambda / abs(beta(i, 0));
+            out = out + temp - 2 * log(abs(beta_subset(i))) - lambda / abs(beta_subset(i));
         }
     }
 
     return out;
 }
 
-arma::mat sampling_beta(arma::mat mu_n, arma::mat chol_Lambda_n_inv, double sigma, int p, bool scale_sigma_prior)
+arma::mat sampling_beta(const arma::mat &mu_n, const arma::mat &chol_Lambda_n_inv, double sigma, int p, bool scale_sigma_prior)
 {
 
     arma::vec eps = Rcpp::rnorm(p);
@@ -420,14 +518,14 @@ arma::mat sampling_beta(arma::mat mu_n, arma::mat chol_Lambda_n_inv, double sigm
     return output;
 }
 
-double sampling_sigma(double a_n, double b_0, arma::mat YY, arma::mat mu_n, arma::mat Lambda_n)
+double sampling_sigma(double a_n, double b_0, const arma::mat &YY, const arma::mat &mu_n, const arma::mat &Lambda_n)
 {
     double b_n = b_0 + 0.5 * as_scalar(YY - mu_n.t() * Lambda_n * mu_n);
     double output = 1.0 / sqrt(Rcpp::rgamma(1, a_n, 1.0 / b_n)[0]);
     return output;
 }
 
-arma::vec sampling_lambda(arma::mat lambda, arma::mat beta, double sigma, double tau, int p, bool scale_sigma_prior)
+arma::vec sampling_lambda(const arma::mat &lambda, const arma::mat &beta, double sigma, double tau, int p, bool scale_sigma_prior)
 {
     // slice sampling for lambda
     // loop over all parameters
@@ -460,7 +558,7 @@ arma::vec sampling_lambda(arma::mat lambda, arma::mat beta, double sigma, double
     return gamma_l;
 }
 
-double sampling_tau(arma::mat lambda, arma::mat beta, double sigma, double tau, bool scale_sigma_prior)
+double sampling_tau(const arma::mat &lambda, const arma::mat &beta, double sigma, double tau, bool scale_sigma_prior)
 {
     // slice sampling for tau
     double shape_tau = 0.5 * (1.0 + lambda.n_elem);

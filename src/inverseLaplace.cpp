@@ -152,6 +152,27 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
     {
         block_indexes(i + 1) = block_cum_count(i);
     }
+    arma::field<arma::uvec> penalize_index_blocks(N_blocks);
+    arma::uvec penalize_all_blocks(N_blocks);
+    arma::field<arma::vec> eta_blocks;
+    arma::vec eta_logsum_blocks;
+    if (singular == true)
+    {
+        eta_blocks.set_size(N_blocks);
+        eta_logsum_blocks.set_size(N_blocks);
+    }
+    for (int i = 0; i < N_blocks; i++)
+    {
+        const arma::uword block_start = block_indexes(i);
+        const arma::uword block_end = block_indexes(i + 1) - 1;
+        penalize_index_blocks(i) = find(penalize.subvec(block_start, block_end) > 0);
+        penalize_all_blocks(i) = penalize_index_blocks(i).n_elem == static_cast<arma::uword>(block_end - block_start + 1);
+        if (singular == true)
+        {
+            eta_blocks(i) = eta.rows(block_start, block_end);
+            eta_logsum_blocks(i) = arma::sum(arma::log(eta_blocks(i)));
+        }
+    }
 
     // double tau = 1.0;
     // double tau_prop = 0.0;
@@ -174,31 +195,62 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
             Rprintf("%d\n", h);
         }
 
+        double log_s = 0.0;
+        double inv_s_sq = 0.0;
+        if (singular == true)
+        {
+            log_s = std::log(s);
+            inv_s_sq = 1.0 / (s * s);
+        }
+
         // sampling beta
         // a gibbs sampler for all blocks
         for (int i = 0; i < N_blocks; i++)
         {
             // loop over all blocks, sample each block by ellipitical slice sampler
             // compute conditional mean
+            const arma::uword block_start = block_indexes(i);
+            const arma::uword block_end = block_indexes(i + 1) - 1;
+            const arma::uvec &penalize_index_block = penalize_index_blocks(i);
+            const bool all_penalized_block = penalize_all_blocks(i);
 
-            beta_condition = join_cols(b.head_rows(block_indexes(i)) - beta_hat_fixed.head_rows(block_indexes(i)), b.tail_rows(p - block_indexes(i + 1)) - beta_hat_fixed.tail_rows(p - block_indexes(i + 1)));
-            beta_hat_block = beta_hat_fixed.rows(block_indexes(i), block_indexes(i + 1) - 1) + mean_factors(i) * beta_condition;
+            if (block_vec(i) == 1)
+            {
+                beta_hat_block = beta_hat_fixed.rows(block_start, block_end);
+                beta_hat_block(0, 0) = beta_hat_block(0, 0) + scalar_conditional_mean(mean_factors(i), b, beta_hat_fixed, block_start);
+            }
+            else
+            {
+                beta_condition = join_cols(b.head_rows(block_start) - beta_hat_fixed.head_rows(block_start), b.tail_rows(p - block_indexes(i + 1)) - beta_hat_fixed.tail_rows(p - block_indexes(i + 1)));
+                beta_hat_block = beta_hat_fixed.rows(block_start, block_end) + mean_factors(i) * beta_condition;
+            }
 
             // define ellipse
             // eps = rnorm((uword) block_vec(i));
             eps = randn<vec>(block_vec(i), 1);
             nu = chol_factors(i) * eps;
             nu = s * nu;
+            arma::vec Sigma_block_inv_diag;
+            double Sigma_block_log_det = 0.0;
+            if (singular == true)
+            {
+                Sigma_block_inv_diag = eta_blocks(i) * inv_s_sq;
+                Sigma_block_log_det = eta_logsum_blocks(i) - 2.0 * static_cast<double>(eta_blocks(i).n_elem) * log_s;
+            }
 
             // acceptance threshold
-            priorcomp = log_inverselaplace_prior(b.rows(block_indexes(i), block_indexes(i + 1) - 1), lambda, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1)) - log_normal_density_matrix_2(b.rows(block_indexes(i), block_indexes(i + 1) - 1), eta.rows(block_indexes(i), block_indexes(i + 1) - 1) / pow(s, 2), singular);
+            priorcomp = log_inverselaplace_prior(b.rows(block_start, block_end), lambda, s, vglobal, penalize_index_block, all_penalized_block);
+            if (singular == true)
+            {
+                priorcomp = priorcomp - log_normal_density_matrix_2(b.rows(block_start, block_end), Sigma_block_inv_diag, Sigma_block_log_det, singular);
+            }
 
             u = arma::as_scalar(randu(1));
 
             ly = priorcomp + log(u);
 
             // subtract the new conditional mean from last draw
-            beta_block = b.rows(block_indexes(i), block_indexes(i + 1) - 1) - beta_hat_block;
+            beta_block = b.rows(block_start, block_end) - beta_hat_block;
 
             thetaprop = arma::as_scalar(randu(1)) * 2 * M_PI;
 
@@ -211,11 +263,11 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
             if (i == 0 && icept == true)
             {
 
-                b.subvec(block_indexes(i), block_indexes(i + 1) - 1) = betaprop + beta_hat_block;
+                b.subvec(block_start, block_end) = betaprop + beta_hat_block;
             }
             else
             {
-                while (log_inverselaplace_prior(beta_hat_block + betaprop, lambda, s, vglobal, penalize.rows(block_indexes(i), block_indexes(i + 1) - 1)) - log_normal_density_matrix_2(beta_hat_block + betaprop, eta.rows(block_indexes(i), block_indexes(i + 1) - 1) / pow(s, 2), singular) < ly)
+                while (log_inverselaplace_prior(beta_hat_block + betaprop, lambda, s, vglobal, penalize_index_block, all_penalized_block) - log_normal_density_matrix_2(beta_hat_block + betaprop, Sigma_block_inv_diag, Sigma_block_log_det, singular) < ly)
                 {
 
                     loopcount += 1;
@@ -236,7 +288,7 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
                     betaprop = beta_block * cos(thetaprop) + nu * sin(thetaprop);
                 }
 
-                b.subvec(block_indexes(i), block_indexes(i + 1) - 1) = betaprop + beta_hat_block;
+                b.subvec(block_start, block_end) = betaprop + beta_hat_block;
             }
         }
 
