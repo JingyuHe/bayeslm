@@ -84,19 +84,19 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
 
     arma::vec eta = 1.0 / cc; // 1/c in the paper, precision of the prior
     arma::mat M0;
-    arma::mat Sigma;
+    arma::mat Precision;
 
     if (singular == true)
     {
         // if matrix X is singular, use the "conjugate regression" type adjustment
         M0 = arma::diagmat(eta);
-        Sigma = inv(XX + M0);
-        beta_hat = Sigma * (trans(YX));
+        Precision = XX + M0;
+        beta_hat = arma::solve(Precision, trans(YX), arma::solve_opts::likely_sympd);
     }
     else
     {
-        Sigma = inv(XX);
-        beta_hat = Sigma * (trans(YX));
+        Precision = XX;
+        beta_hat = arma::solve(Precision, trans(YX), arma::solve_opts::likely_sympd);
     }
 
     // a initial value of the derivation from the mean
@@ -123,7 +123,7 @@ List inverseLaplace_cpp_loop(arma::mat Y, arma::mat X, double lambda, arma::uvec
     /*
         pre-loop computation for conditional mean and covariance matrix given other blocks
     */
-    arma::field<arma::mat> output = conditional_factors_parallel(Sigma, block_vec);
+    arma::field<arma::mat> output = conditional_factors_parallel(Precision, block_vec);
     arma::field<arma::mat> mean_factors = output.rows(0, N_blocks - 1);
     arma::field<arma::mat> chol_factors = output.rows(N_blocks, 2 * N_blocks - 1);
 
